@@ -31,31 +31,23 @@ Wordテンプレートに会社情報（会社名・住所・代表者名）を�
 
 ## 直前にやった作業
 
-1. PrismaスキーマをSQLiteからPostgreSQLに変更
-2. package.jsonに`postinstall`スクリプト（`prisma generate`）を追加
-3. `build`スクリプトを`prisma generate && prisma migrate deploy && next build`に変更
-4. GitHubにプッシュ済み（コミット: 6939ca7）
+- AI_CONTEXT.md を作成し、GitHubにpush済み
+- プロジェクトの現状整理が完了
 
 ## 未解決の問題
 
-1. **Railwayデプロイの確認待ち**
-   - PostgreSQL対応の修正をプッシュしたが、デプロイ結果の確認が必要
-   - マイグレーションが正常に実行されるか確認が必要
+1. **Railwayの最終デプロイ確認が未完了**
+   - PostgreSQL対応の修正をプッシュしたが、デプロイ結果の最終確認が必要
 
-2. **ローカル開発環境の再構築**
-   - PrismaスキーマをPostgreSQLに変更したため、ローカルではSQLiteが使えなくなった
-   - ローカル開発用にPostgreSQLをセットアップするか、別の方法を検討する必要あり
-
-3. **Google OAuth本番設定**
+2. **Google OAuthの本番設定は未対応**
    - Railway本番URLでのOAuthリダイレクトURI設定が必要
    - Google Cloud Consoleで本番URLを承認済みリダイレクトURIに追加する必要あり
 
 ## 次にやるべきこと
 
-1. Railwayのデプロイログを確認し、エラーがないか確認
-2. 本番URLでGoogle OAuthが動作するよう設定
-3. 本番環境での動作確認（ログイン→テンプレートアップロード→PDF生成）
-4. 必要に応じてシードデータ（サンプルテンプレート）を本番DBに投入
+1. Railwayのデプロイログ確認
+2. Google OAuth本番リダイレクトURI設定
+3. 本番環境でログイン動作確認
 
 ## 技術的前提・制約
 
