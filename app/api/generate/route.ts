@@ -1,30 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/db"
 import { logAction, logError } from "@/lib/logger"
 import { processTemplate } from "@/lib/template-processor"
-import { generatePDF, generatePDFPreview } from "@/lib/pdf-generator"
+import { generatePDF } from "@/lib/pdf-generator"
 import { v4 as uuidv4 } from "uuid"
+
+// テンプレートファイルのパス
+const CONTRACT_TEMPLATE_PATH = "templates/contract_template.docx"
+const INVOICE_TEMPLATE_PATH = "templates/invoice_template.docx"
 
 // PDF生成
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-
-  if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "認証が必要です" },
-      { status: 401 }
-    )
-  }
-
-  const userId = session.user.id
-  const email = session.user.email || "unknown"
-  const name = session.user.name || "unknown"
+  const requestId = uuidv4().slice(0, 8)
 
   try {
     const body = await request.json()
-    const { companyName, address, representativeName, templateId, preview } = body
+    const { companyName, address, representativeName } = body
 
     // バリデーション
     if (!companyName || typeof companyName !== "string") {
@@ -66,80 +56,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!templateId || typeof templateId !== "string") {
-      return NextResponse.json(
-        { error: "テンプレートを選択してください" },
-        { status: 400 }
-      )
-    }
+    logAction(requestId, "system", "anonymous", "PDF生成", `開始 - 会社名: ${companyName}`)
 
-    // テンプレートを取得
-    const template = await db.template.findUnique({
-      where: { id: templateId },
-    })
-
-    if (!template) {
-      return NextResponse.json(
-        { error: "テンプレートが見つかりません" },
-        { status: 404 }
-      )
-    }
-
-    logAction(userId, email, name, "PDF生成", "開始")
-
-    // テンプレートにデータを埋め込む
-    logAction(userId, email, name, "テンプレート読み込み", "開始")
-    const docxBuffer = await processTemplate(template.filePath, {
+    const templateData = {
       companyName,
       address,
       representativeName,
-    })
-    logAction(userId, email, name, "テンプレート読み込み", "成功")
-
-    // プレビューモードの場合
-    if (preview) {
-      logAction(userId, email, name, "PDF生成", "プレビュー生成開始")
-      const pdfBase64 = await generatePDFPreview(docxBuffer)
-      logAction(userId, email, name, "PDF生成", "プレビュー生成成功")
-
-      return NextResponse.json({
-        success: true,
-        preview: true,
-        pdfBase64,
-      })
     }
 
-    // PDFを生成
-    const fileId = uuidv4()
-    const { pdfUrl } = await generatePDF(docxBuffer, fileId)
+    // 契約書PDFを生成
+    logAction(requestId, "system", "anonymous", "契約書PDF生成", "開始")
+    const contractDocxBuffer = await processTemplate(CONTRACT_TEMPLATE_PATH, templateData)
+    const contractFileId = `${companyName}_contract_${uuidv4().slice(0, 8)}`
+    const { pdfUrl: contractPdfUrl } = await generatePDF(contractDocxBuffer, contractFileId)
+    logAction(requestId, "system", "anonymous", "契約書PDF生成", "成功")
 
-    // 履歴を保存
-    const history = await db.generationHistory.create({
-      data: {
-        userId,
-        templateId,
-        companyName,
-        address,
-        representativeName,
-        pdfPath: pdfUrl,
-      },
-    })
+    // 送り状PDFを生成
+    logAction(requestId, "system", "anonymous", "送り状PDF生成", "開始")
+    const invoiceDocxBuffer = await processTemplate(INVOICE_TEMPLATE_PATH, templateData)
+    const invoiceFileId = `${companyName}_invoice_${uuidv4().slice(0, 8)}`
+    const { pdfUrl: invoicePdfUrl } = await generatePDF(invoiceDocxBuffer, invoiceFileId)
+    logAction(requestId, "system", "anonymous", "送り状PDF生成", "成功")
 
-    logAction(
-      userId,
-      email,
-      name,
-      "PDF生成",
-      `成功 - 会社名: ${companyName}, 履歴ID: ${history.id}`
-    )
+    logAction(requestId, "system", "anonymous", "PDF生成", "完了")
 
     return NextResponse.json({
       success: true,
-      pdfUrl,
-      historyId: history.id,
+      contractPdfUrl,
+      invoicePdfUrl,
     })
   } catch (error) {
-    logError(userId, email, name, error as Error)
+    logError(requestId, "system", "anonymous", error as Error)
     console.error("Error generating PDF:", error)
     return NextResponse.json(
       { error: "PDFの生成に失敗しました" },

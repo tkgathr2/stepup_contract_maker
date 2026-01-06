@@ -1,6 +1,9 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+// MVP版ではデータベースを使用しないため、最小限の設定のみ残しています
+// 将来的に履歴機能等を追加する場合は、モデルを再定義してください
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,38 +11,4 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String
-  image     String?
-  googleId  String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  histories GenerationHistory[]
-}
-
-model Template {
-  id        String   @id @default(uuid())
-  name      String
-  type      String   // "contract" or "invoice"
-  filePath  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  histories GenerationHistory[]
-}
-
-model GenerationHistory {
-  id                 String   @id @default(uuid())
-  userId             String
-  templateId         String
-  companyName        String
-  address            String
-  representativeName String
-  pdfPath            String
-  createdAt          DateTime @default(now())
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  template           Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
 }
