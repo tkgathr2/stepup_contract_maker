@@ -67,14 +67,14 @@ export async function POST(request: NextRequest) {
     // 契約書PDFを生成
     logAction(requestId, "system", "anonymous", "契約書PDF生成", "開始")
     const contractDocxBuffer = await processTemplate(CONTRACT_TEMPLATE_PATH, templateData)
-    const contractFileId = `${companyName}_contract_${uuidv4().slice(0, 8)}`
+    const contractFileId = `contract_${uuidv4().slice(0, 8)}`
     const { pdfUrl: contractPdfUrl } = await generatePDF(contractDocxBuffer, contractFileId)
     logAction(requestId, "system", "anonymous", "契約書PDF生成", "成功")
 
     // 送り状PDFを生成
     logAction(requestId, "system", "anonymous", "送り状PDF生成", "開始")
     const invoiceDocxBuffer = await processTemplate(INVOICE_TEMPLATE_PATH, templateData)
-    const invoiceFileId = `${companyName}_invoice_${uuidv4().slice(0, 8)}`
+    const invoiceFileId = `invoice_${uuidv4().slice(0, 8)}`
     const { pdfUrl: invoicePdfUrl } = await generatePDF(invoiceDocxBuffer, invoiceFileId)
     logAction(requestId, "system", "anonymous", "送り状PDF生成", "成功")
 
