@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# logs (keep .gitkeep)
+/logs/*
+!/logs/.gitkeep
+
+# generated PDFs (keep .gitkeep)
+/public/generated/*
+!/public/generated/.gitkeep
+
+# database files
+*.db
+*.db-journal
