@@ -146,7 +146,7 @@ export default function Home() {
 
                   <div className="space-y-3">
                     <Button
-                      onClick={() => handleDownload(result.contractPdfUrl, `${companyName}_contract.pdf`)}
+                      onClick={() => handleDownload(result.contractPdfUrl, `人材紹介契約書(${companyName}様).pdf`)}
                       variant="outline"
                       className="w-full"
                     >
@@ -154,7 +154,7 @@ export default function Home() {
                     </Button>
 
                     <Button
-                      onClick={() => handleDownload(result.invoicePdfUrl, `${companyName}_invoice.pdf`)}
+                      onClick={() => handleDownload(result.invoicePdfUrl, `送付状 (${companyName}様).pdf`)}
                       variant="outline"
                       className="w-full"
                     >
