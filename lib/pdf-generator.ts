@@ -1,13 +1,15 @@
 import * as fs from "fs"
 import * as path from "path"
-import puppeteer from "puppeteer"
-import mammoth from "mammoth"
 import { v4 as uuidv4 } from "uuid"
+import libre from "libreoffice-convert"
+import { promisify } from "util"
+
+const libreConvert = promisify(libre.convert)
 
 const GENERATED_DIR = path.join(process.cwd(), "public", "generated")
 
 /**
- * WordファイルのBufferをPDFに変換する
+ * WordファイルのBufferをPDFに変換する（LibreOfficeを使用）
  * @param docxBuffer WordファイルのBuffer
  * @param fileName 出力ファイル名（拡張子なし）
  * @returns 生成されたPDFのURL
@@ -26,80 +28,21 @@ export async function generatePDF(
   const pdfFileName = `${fileId}.pdf`
   const pdfPath = path.join(GENERATED_DIR, pdfFileName)
 
-  // WordをHTMLに変換
-  const result = await mammoth.convertToHtml({ buffer: docxBuffer })
-  const htmlContent = result.value
-
-  // HTMLをPDFに変換
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  })
-
   try {
-    const page = await browser.newPage()
+    // LibreOfficeを使用してDOCXをPDFに直接変換
+    const pdfBuffer = await libreConvert(docxBuffer, ".pdf", undefined)
 
-    // HTML全体を構築（スタイル付き）
-    const fullHtml = `
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          @page {
-            size: A4;
-            margin: 20mm;
-          }
-          body {
-            font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
-            font-size: 12pt;
-            line-height: 1.6;
-            color: #333;
-          }
-          h1, h2, h3 {
-            color: #222;
-          }
-          table {
-            border-collapse: collapse;
-            width: 100%;
-          }
-          th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-          }
-          p {
-            margin: 0.5em 0;
-          }
-        </style>
-      </head>
-      <body>
-        ${htmlContent}
-      </body>
-      </html>
-    `
-
-    await page.setContent(fullHtml, {
-      waitUntil: "networkidle0",
-    })
-
-    await page.pdf({
-      path: pdfPath,
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "20mm",
-        bottom: "20mm",
-        left: "20mm",
-      },
-    })
+    // PDFを保存
+    fs.writeFileSync(pdfPath, pdfBuffer)
 
     return {
       pdfUrl: `/generated/${pdfFileName}`,
       pdfPath,
     }
-  } finally {
-    await browser.close()
+  } catch (error) {
+    throw new Error(
+      `PDF generation failed: ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 }
 
@@ -109,75 +52,16 @@ export async function generatePDF(
  * @returns PDFのBase64エンコードされた文字列
  */
 export async function generatePDFPreview(docxBuffer: Buffer): Promise<string> {
-  // WordをHTMLに変換
-  const result = await mammoth.convertToHtml({ buffer: docxBuffer })
-  const htmlContent = result.value
-
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  })
-
   try {
-    const page = await browser.newPage()
-
-    const fullHtml = `
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          @page {
-            size: A4;
-            margin: 20mm;
-          }
-          body {
-            font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
-            font-size: 12pt;
-            line-height: 1.6;
-            color: #333;
-          }
-          h1, h2, h3 {
-            color: #222;
-          }
-          table {
-            border-collapse: collapse;
-            width: 100%;
-          }
-          th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-          }
-          p {
-            margin: 0.5em 0;
-          }
-        </style>
-      </head>
-      <body>
-        ${htmlContent}
-      </body>
-      </html>
-    `
-
-    await page.setContent(fullHtml, {
-      waitUntil: "networkidle0",
-    })
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "20mm",
-        bottom: "20mm",
-        left: "20mm",
-      },
-    })
+    // LibreOfficeを使用してDOCXをPDFに直接変換
+    const pdfBuffer = await libreConvert(docxBuffer, ".pdf", undefined)
 
     // Base64エンコード
-    return Buffer.from(pdfBuffer).toString("base64")
-  } finally {
-    await browser.close()
+    return pdfBuffer.toString("base64")
+  } catch (error) {
+    throw new Error(
+      `PDF preview generation failed: ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 }
 
