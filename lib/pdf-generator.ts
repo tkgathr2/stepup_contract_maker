@@ -1,12 +1,32 @@
 import * as fs from "fs"
 import * as path from "path"
 import { v4 as uuidv4 } from "uuid"
-import libre from "libreoffice-convert"
+import { execFile } from "child_process"
 import { promisify } from "util"
 
-const libreConvert = promisify(libre.convert)
+const execFileAsync = promisify(execFile)
 
 const GENERATED_DIR = path.join(process.cwd(), "public", "generated")
+const TEMP_DIR = path.join(process.cwd(), "temp")
+
+// LibreOfficeのパスを検出
+function getLibreOfficePath(): string {
+  const possiblePaths = [
+    "C:\\Program Files\\LibreOffice\\program\\soffice.exe",
+    "C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",
+    "/usr/bin/soffice",
+    "/usr/local/bin/soffice",
+    "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+  ]
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return p
+    }
+  }
+
+  throw new Error("LibreOffice not found. Please install LibreOffice.")
+}
 
 /**
  * WordファイルのBufferをPDFに変換する（LibreOfficeを使用）
@@ -18,28 +38,60 @@ export async function generatePDF(
   docxBuffer: Buffer,
   fileName?: string
 ): Promise<{ pdfUrl: string; pdfPath: string }> {
-  // 生成ディレクトリが存在しない場合は作成
+  // ディレクトリを作成
   if (!fs.existsSync(GENERATED_DIR)) {
     fs.mkdirSync(GENERATED_DIR, { recursive: true })
+  }
+  if (!fs.existsSync(TEMP_DIR)) {
+    fs.mkdirSync(TEMP_DIR, { recursive: true })
   }
 
   // ファイル名を生成
   const fileId = fileName || uuidv4()
+  const tempDocxPath = path.join(TEMP_DIR, `${fileId}.docx`)
   const pdfFileName = `${fileId}.pdf`
   const pdfPath = path.join(GENERATED_DIR, pdfFileName)
 
   try {
-    // LibreOfficeを使用してDOCXをPDFに直接変換
-    const pdfBuffer = await libreConvert(docxBuffer, ".pdf", undefined)
+    // 一時的にDOCXファイルを保存
+    fs.writeFileSync(tempDocxPath, docxBuffer)
 
-    // PDFを保存
-    fs.writeFileSync(pdfPath, pdfBuffer)
+    // LibreOfficeのパスを取得
+    const libreOfficePath = getLibreOfficePath()
+
+    // LibreOfficeでPDFに変換
+    // --headless: GUIなしで実行
+    // --convert-to pdf: PDFに変換
+    // --outdir: 出力ディレクトリ
+    await execFileAsync(libreOfficePath, [
+      "--headless",
+      "--convert-to",
+      "pdf",
+      "--outdir",
+      GENERATED_DIR,
+      tempDocxPath,
+    ])
+
+    // 一時ファイルを削除
+    if (fs.existsSync(tempDocxPath)) {
+      fs.unlinkSync(tempDocxPath)
+    }
+
+    // PDFファイルが生成されたか確認
+    if (!fs.existsSync(pdfPath)) {
+      throw new Error("PDF file was not generated")
+    }
 
     return {
       pdfUrl: `/generated/${pdfFileName}`,
       pdfPath,
     }
   } catch (error) {
+    // エラー時は一時ファイルを削除
+    if (fs.existsSync(tempDocxPath)) {
+      fs.unlinkSync(tempDocxPath)
+    }
+
     throw new Error(
       `PDF generation failed: ${error instanceof Error ? error.message : String(error)}`
     )
@@ -52,16 +104,18 @@ export async function generatePDF(
  * @returns PDFのBase64エンコードされた文字列
  */
 export async function generatePDFPreview(docxBuffer: Buffer): Promise<string> {
-  try {
-    // LibreOfficeを使用してDOCXをPDFに直接変換
-    const pdfBuffer = await libreConvert(docxBuffer, ".pdf", undefined)
+  const tempId = uuidv4()
+  const { pdfPath } = await generatePDF(docxBuffer, tempId)
 
-    // Base64エンコード
+  try {
+    // PDFを読み込んでBase64エンコード
+    const pdfBuffer = fs.readFileSync(pdfPath)
     return pdfBuffer.toString("base64")
-  } catch (error) {
-    throw new Error(
-      `PDF preview generation failed: ${error instanceof Error ? error.message : String(error)}`
-    )
+  } finally {
+    // 一時PDFを削除
+    if (fs.existsSync(pdfPath)) {
+      fs.unlinkSync(pdfPath)
+    }
   }
 }
 
