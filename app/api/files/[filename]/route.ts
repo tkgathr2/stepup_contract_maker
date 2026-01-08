@@ -7,7 +7,8 @@ export async function GET(
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
-    const { filename } = await params
+    const { filename: encodedFilename } = await params
+    const filename = decodeURIComponent(encodedFilename)
 
     // セキュリティ: ファイル名にパストラバーサル攻撃を防ぐ
     if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {

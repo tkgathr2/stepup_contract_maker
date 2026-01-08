@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // 契約書を生成（PDFとWord）
     const contractDocxBuffer = await processTemplate(CONTRACT_TEMPLATE_PATH, templateData)
-    const contractFileId = `contract_${uuidv4().slice(0, 8)}`
+    const contractFileId = `人材紹介契約書(${companyName}様)`
 
     // PDF生成
     const { pdfUrl: contractPdfUrl } = await generatePDF(contractDocxBuffer, contractFileId)
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     // 送り状を生成（PDFとWord）
     const invoiceDocxBuffer = await processTemplate(INVOICE_TEMPLATE_PATH, templateData)
-    const invoiceFileId = `invoice_${uuidv4().slice(0, 8)}`
+    const invoiceFileId = `送付状(${companyName}様)`
 
     // PDF生成
     const { pdfUrl: invoicePdfUrl } = await generatePDF(invoiceDocxBuffer, invoiceFileId)
