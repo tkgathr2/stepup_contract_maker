@@ -65,9 +65,10 @@ export async function generatePDF(
     // --outdir: 出力ディレクトリ
     // フィルターオプション:
     //   SelectPdfVersion=1: PDF 1.7
-    //   EmbedStandardFonts=true: すべてのフォントを埋め込む
-    //   UseTaggedPDF=true: タグ付きPDF（アクセシビリティ向上）
-    const filterOptions = "SelectPdfVersion=1:EmbedStandardFonts=true:UseTaggedPDF=false"
+    //   EmbedStandardFonts=true: 標準フォントを埋め込む
+    //   EmbedComplexScriptFonts=true: 日本語などのCJKフォントを埋め込む
+    //   UseTaggedPDF=false: タグ付きPDFを無効化（互換性向上）
+    const filterOptions = "SelectPdfVersion=1:EmbedStandardFonts=true:EmbedComplexScriptFonts=true:UseTaggedPDF=false"
     await execFileAsync(libreOfficePath, [
       "--headless",
       "--convert-to",
