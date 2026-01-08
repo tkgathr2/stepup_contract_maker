@@ -25,6 +25,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [isLookingUpPostalCode, setIsLookingUpPostalCode] = useState(false)
   const [result, setResult] = useState<GenerateResult | null>(null)
+  const [previewType, setPreviewType] = useState<"contract" | "invoice">("contract")
 
   // 住所から郵便番号を検索
   const lookupPostalCodeFromAddress = useCallback(async (address: string) => {
@@ -243,17 +244,38 @@ export default function Home() {
         {result && (
           <Card className="mt-8">
             <CardHeader>
-              <CardTitle>契約書プレビュー</CardTitle>
+              <CardTitle>書類プレビュー</CardTitle>
               <CardDescription>
-                生成された契約書をプレビューで確認できます
+                生成された書類をプレビューで確認できます
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <iframe
-                src={result.contractPdfUrl}
-                className="w-full h-[600px] border rounded"
-                title="Contract PDF Preview"
-              />
+              <div className="border-t pt-4">
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    variant={previewType === "contract" ? "default" : "outline"}
+                    onClick={() => setPreviewType("contract")}
+                    className="flex-1"
+                  >
+                    契約書
+                  </Button>
+                  <Button
+                    variant={previewType === "invoice" ? "default" : "outline"}
+                    onClick={() => setPreviewType("invoice")}
+                    className="flex-1"
+                  >
+                    送付状
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-500 mb-2">
+                  {previewType === "contract" ? "契約書" : "送付状"}プレビュー:
+                </p>
+                <iframe
+                  src={previewType === "contract" ? result.contractPdfUrl : result.invoicePdfUrl}
+                  className="w-full h-[600px] border rounded"
+                  title={previewType === "contract" ? "Contract PDF Preview" : "Invoice PDF Preview"}
+                />
+              </div>
             </CardContent>
           </Card>
         )}
