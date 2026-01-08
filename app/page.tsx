@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,22 @@ export default function Home() {
   const [isLookingUpPostalCode, setIsLookingUpPostalCode] = useState(false)
   const [result, setResult] = useState<GenerateResult | null>(null)
   const [previewType, setPreviewType] = useState<"contract" | "invoice">("contract")
+  const formRef = useRef<HTMLFormElement>(null)
+
+  // Ctrl+Enterでフォーム送信
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault()
+        if (formRef.current && !isLoading) {
+          formRef.current.requestSubmit()
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isLoading])
 
   // 住所から郵便番号を検索
   const lookupPostalCodeFromAddress = useCallback(async (address: string) => {
@@ -123,7 +139,7 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="companyName">会社名</Label>
                   <Input
@@ -164,7 +180,7 @@ export default function Home() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "生成中..." : "書類を生成"}
+                  {isLoading ? "生成中..." : "書類を生成（Ctrl+Enter）"}
                 </Button>
               </form>
             </CardContent>
