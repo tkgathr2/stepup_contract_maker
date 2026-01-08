@@ -61,10 +61,17 @@ export async function POST(request: NextRequest) {
     // 郵便番号が送信されていない場合、住所から自動検索
     if (!postalCode || postalCode.trim() === "") {
       if (address && address.trim() !== "") {
-        const postalCodeResult = await lookupPostalCode(address)
-        if (postalCodeResult) {
-          postalCode = postalCodeResult
-        } else {
+        try {
+          console.log(`[PostalCode] Looking up postal code for address: ${address}`)
+          const postalCodeResult = await lookupPostalCode(address)
+          console.log(`[PostalCode] Lookup result: ${postalCodeResult}`)
+          if (postalCodeResult) {
+            postalCode = postalCodeResult
+          } else {
+            postalCode = ""
+          }
+        } catch (lookupError) {
+          console.error(`[PostalCode] Lookup error:`, lookupError)
           postalCode = ""
         }
       } else {
