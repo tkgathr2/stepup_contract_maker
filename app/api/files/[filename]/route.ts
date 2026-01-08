@@ -41,11 +41,13 @@ export async function GET(
       : "application/octet-stream"
 
     // ファイルを返す
+    // RFC 5987形式でファイル名をエンコード（日本語対応）
+    const encodedFilename = encodeURIComponent(filename)
     return new NextResponse(fileBuffer, {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": `inline; filename="${filename}"`,
+        "Content-Disposition": `inline; filename*=UTF-8''${encodedFilename}`,
       },
     })
   } catch (error) {
