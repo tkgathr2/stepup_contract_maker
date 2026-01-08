@@ -42,12 +42,12 @@ export async function GET(
 
     // ファイルを返す
     // RFC 5987形式でファイル名をエンコード（日本語対応）
-    const encodedFilename = encodeURIComponent(filename)
+    const encodedFilenameForHeader = encodeURIComponent(filename)
     return new NextResponse(fileBuffer, {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": `inline; filename*=UTF-8''${encodedFilename}`,
+        "Content-Disposition": `inline; filename*=UTF-8''${encodedFilenameForHeader}`,
       },
     })
   } catch (error) {
