@@ -17,32 +17,55 @@ interface PostalCodeResult {
  */
 export async function lookupPostalCode(address: string): Promise<string> {
   try {
-    // 住所から都道府県と市区町村を抽出
-    const addressParts = extractAddressParts(address)
+    let postalData: Record<string, string>
 
-    if (!addressParts.prefecture || !addressParts.city) {
-      return ""
+    // Node.js環境かブラウザ環境かを判定
+    if (typeof window === "undefined") {
+      // Node.js環境: ファイルシステムから読み込み
+      const fs = await import("fs")
+      const path = await import("path")
+      const dataPath = path.join(process.cwd(), "public", "data", "postal-codes.json")
+      const fileContent = fs.readFileSync(dataPath, "utf-8")
+      postalData = JSON.parse(fileContent)
+    } else {
+      // ブラウザ環境: fetchで取得
+      const response = await fetch("/data/postal-codes.json")
+      if (!response.ok) {
+        console.warn("郵便番号データの読み込みに失敗しました")
+        return ""
+      }
+      postalData = await response.json()
     }
 
-    // 郵便番号検索API（zipcloud）を使用
-    const searchQuery = encodeURIComponent(`${addressParts.prefecture}${addressParts.city}`)
-    const apiUrl = `https://zipcloud.ibsnet.co.jp/api/search?address=${searchQuery}`
+    // 住所から最も長い一致を探す（前方一致優先）
+    // 例: "東京都渋谷区渋谷1-1-1" → "東京都渋谷区渋谷" → "東京都渋谷区"
+    let bestMatch = ""
+    let bestMatchLength = 0
 
-    const response = await fetch(apiUrl)
-
-    if (!response.ok) {
-      console.warn("郵便番号検索APIのリクエストに失敗しました")
-      return ""
+    for (const key in postalData) {
+      if (address.startsWith(key) && key.length > bestMatchLength) {
+        bestMatch = postalData[key]
+        bestMatchLength = key.length
+      }
     }
 
-    const data = await response.json()
-
-    if (data.status === 200 && data.results && data.results.length > 0) {
-      // 最初の結果を使用
-      return data.results[0].zipcode || ""
+    if (bestMatch) {
+      return bestMatch
     }
 
-    return ""
+    // 完全一致がない場合、部分一致を試す
+    // 例: "横浜市西区みなとみらい2-2-1" → "横浜市西区みなとみらい"
+    for (const key in postalData) {
+      if (address.includes(key) && key.length > 5) {
+        // 5文字以上の部分一致のみ有効
+        if (key.length > bestMatchLength) {
+          bestMatch = postalData[key]
+          bestMatchLength = key.length
+        }
+      }
+    }
+
+    return bestMatch
   } catch (error) {
     console.error("郵便番号の検索中にエラーが発生しました:", error)
     return ""

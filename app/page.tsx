@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
+import { lookupPostalCode } from "@/lib/postal-code-lookup"
 
 interface GenerateResult {
   success: boolean
@@ -20,62 +21,40 @@ export default function Home() {
   const [companyName, setCompanyName] = useState("")
   const [address, setAddress] = useState("")
   const [representativeName, setRepresentativeName] = useState("")
-  const [postalCode, setPostalCode] = useState("")
+  const [postalCode, setPostalCode] = useState("") // 内部で保持（表示しない）
   const [isLoading, setIsLoading] = useState(false)
-  const [isLookingUpAddress, setIsLookingUpAddress] = useState(false)
+  const [isLookingUpPostalCode, setIsLookingUpPostalCode] = useState(false)
   const [result, setResult] = useState<GenerateResult | null>(null)
 
-  // 郵便番号から住所を検索
-  const lookupAddressByPostalCode = useCallback(async (postalCode: string) => {
-    // ハイフンを除去して7桁の数字かチェック
-    const cleanedPostalCode = postalCode.replace(/-/g, "")
-    if (!/^\d{7}$/.test(cleanedPostalCode)) {
+  // 住所から郵便番号を検索
+  const lookupPostalCodeFromAddress = useCallback(async (address: string) => {
+    if (!address || address.trim() === "") {
       return
     }
 
-    setIsLookingUpAddress(true)
+    setIsLookingUpPostalCode(true)
     try {
-      const response = await fetch(
-        `https://zipcloud.ibsnet.co.jp/api/search?zipcode=${cleanedPostalCode}`
-      )
-
-      if (!response.ok) {
-        return
-      }
-
-      const data = await response.json()
-
-      if (data.status === 200 && data.results && data.results.length > 0) {
-        const result = data.results[0]
-        const fullAddress = `${result.address1}${result.address2}${result.address3}`
-        setAddress(fullAddress)
-        toast.success("住所を自動入力しました")
+      const postalCodeResult = await lookupPostalCode(address)
+      if (postalCodeResult) {
+        setPostalCode(postalCodeResult)
+        // 検索成功を表示（オプション）
+        console.log(`郵便番号を検索しました: ${postalCodeResult}`)
+      } else {
+        setPostalCode("")
       }
     } catch (error) {
-      console.error("住所検索エラー:", error)
+      console.error("郵便番号検索エラー:", error)
+      setPostalCode("")
     } finally {
-      setIsLookingUpAddress(false)
+      setIsLookingUpPostalCode(false)
     }
   }, [])
-
-  // 郵便番号が変更されたときに住所を検索
-  const handlePostalCodeChange = useCallback(
-    (value: string) => {
-      setPostalCode(value)
-      // ハイフンを除去して7桁になったら自動検索
-      const cleaned = value.replace(/-/g, "")
-      if (cleaned.length === 7) {
-        lookupAddressByPostalCode(value)
-      }
-    },
-    [lookupAddressByPostalCode]
-  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!companyName || !address || !representativeName || !postalCode) {
-      toast.error("すべての項目を入力してください")
+    if (!companyName || !address || !representativeName) {
+      toast.error("会社名、住所、代表者名を入力してください")
       return
     }
 
@@ -156,12 +135,18 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="address">住所</Label>
+                  <Label htmlFor="address">
+                    住所
+                    {isLookingUpPostalCode && (
+                      <span className="ml-2 text-sm text-gray-500">（郵便番号を検索中...）</span>
+                    )}
+                  </Label>
                   <Input
                     id="address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="東京都渋谷区..."
+                    onBlur={(e) => lookupPostalCodeFromAddress(e.target.value)}
+                    placeholder="東京都渋谷区...（入力後に郵便番号を自動検索）"
                     disabled={isLoading}
                   />
                 </div>
@@ -173,22 +158,6 @@ export default function Home() {
                     value={representativeName}
                     onChange={(e) => setRepresentativeName(e.target.value)}
                     placeholder="山田 太郎"
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="postalCode">
-                    郵便番号
-                    {isLookingUpAddress && (
-                      <span className="ml-2 text-sm text-gray-500">（住所を検索中...）</span>
-                    )}
-                  </Label>
-                  <Input
-                    id="postalCode"
-                    value={postalCode}
-                    onChange={(e) => handlePostalCodeChange(e.target.value)}
-                    placeholder="123-4567（7桁入力で自動検索）"
                     disabled={isLoading}
                   />
                 </div>
@@ -258,15 +227,6 @@ export default function Home() {
                       </Button>
                     </div>
                   </div>
-
-                  <div className="border-t pt-4 mt-4">
-                    <p className="text-sm text-gray-500 mb-2">契約書プレビュー:</p>
-                    <iframe
-                      src={result.contractPdfUrl}
-                      className="w-full h-[300px] border rounded"
-                      title="Contract PDF"
-                    />
-                  </div>
                 </div>
               ) : (
                 <div className="h-[300px] border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center">
@@ -278,6 +238,25 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
+
+        {/* プレビューセクション（全幅） */}
+        {result && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>契約書プレビュー</CardTitle>
+              <CardDescription>
+                生成された契約書をプレビューで確認できます
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <iframe
+                src={result.contractPdfUrl}
+                className="w-full h-[600px] border rounded"
+                title="Contract PDF Preview"
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )
