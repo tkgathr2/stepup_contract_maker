@@ -83,7 +83,7 @@ export async function generatePDF(
     }
 
     return {
-      pdfUrl: `/generated/${pdfFileName}`,
+      pdfUrl: `/api/files/${pdfFileName}`,
       pdfPath,
     }
   } catch (error) {

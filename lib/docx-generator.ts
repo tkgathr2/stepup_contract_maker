@@ -28,7 +28,7 @@ export async function saveDocxFile(
   fs.writeFileSync(docxPath, docxBuffer)
 
   return {
-    docxUrl: `/generated/${docxFileName}`,
+    docxUrl: `/api/files/${docxFileName}`,
     docxPath,
   }
 }
