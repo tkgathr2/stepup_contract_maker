@@ -4,10 +4,10 @@ import * as path from "path"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { filename: string } }
+  { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
-    const filename = params.filename
+    const { filename } = await params
 
     // セキュリティ: ファイル名にパストラバーサル攻撃を防ぐ
     if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
