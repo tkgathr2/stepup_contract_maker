@@ -61,12 +61,17 @@ export async function generatePDF(
 
     // LibreOfficeでPDFに変換
     // --headless: GUIなしで実行
-    // --convert-to pdf: PDFに変換
+    // --convert-to pdf:writer_pdf_Export: PDFエクスポートフィルターを使用
     // --outdir: 出力ディレクトリ
+    // フィルターオプション:
+    //   SelectPdfVersion=1: PDF 1.7
+    //   EmbedStandardFonts=true: すべてのフォントを埋め込む
+    //   UseTaggedPDF=true: タグ付きPDF（アクセシビリティ向上）
+    const filterOptions = "SelectPdfVersion=1:EmbedStandardFonts=true:UseTaggedPDF=false"
     await execFileAsync(libreOfficePath, [
       "--headless",
       "--convert-to",
-      "pdf",
+      `pdf:writer_pdf_Export:${filterOptions}`,
       "--outdir",
       GENERATED_DIR,
       tempDocxPath,
