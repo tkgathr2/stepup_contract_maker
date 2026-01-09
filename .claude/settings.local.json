@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:stepupcontractmaker-production-81c0.up.railway.app)",
+      "WebFetch(domain:localhost)"
+    ]
+  }
+}

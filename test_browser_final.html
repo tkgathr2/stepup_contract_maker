@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>契約書・送付状自動生成システム - 最終テスト</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: #333; margin-bottom: 20px; }
+        .test-section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .success { color: #22c55e; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .info { color: #3b82f6; }
+        button { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; margin: 5px; }
+        button:hover { background: #2563eb; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        textarea { width: 100%; height: 150px; font-family: 'Courier New', monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .result { margin-top: 10px; padding: 10px; border-radius: 4px; }
+        .result.success-bg { background: #dcfce7; }
+        .result.error-bg { background: #fee2e2; }
+        iframe { width: 100%; height: 700px; border: 1px solid #ddd; border-radius: 4px; }
+        .checklist { list-style: none; }
+        .checklist li { padding: 8px; margin: 4px 0; background: #f8f8f8; border-radius: 4px; }
+        .checklist li::before { content: "⬜ "; margin-right: 8px; }
+        .checklist li.checked::before { content: "✅ "; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 契約書・送付状自動生成システム - 最終テスト</h1>
+
+        <div class="test-section">
+            <h2>✅ テストチェックリスト</h2>
+            <ul class="checklist" id="checklist">
+                <li id="check-1">ページアクセス成功</li>
+                <li id="check-2">書類生成API成功</li>
+                <li id="check-3">契約書PDF生成成功</li>
+                <li id="check-4">送付状PDF生成成功</li>
+                <li id="check-5">ファイル名が正しい形式（会社名入り）</li>
+                <li id="check-6">郵便番号が自動取得されている</li>
+                <li id="check-7">PDFダウンロード成功</li>
+                <li id="check-8">PDF内容に文字化けなし</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 テスト1: 書類生成API</h2>
+            <button onclick="testGenerateAPI()">テスト実行</button>
+            <div id="test1-result"></div>
+            <textarea id="test1-response" readonly placeholder="APIレスポンスがここに表示されます"></textarea>
+        </div>
+
+        <div class="grid">
+            <div class="test-section">
+                <h2>📄 テスト2: 契約書PDFダウンロード</h2>
+                <button onclick="testContractPDF()" id="btn-contract">契約書PDFをテスト</button>
+                <div id="test2-result"></div>
+            </div>
+
+            <div class="test-section">
+                <h2>📄 テスト3: 送付状PDFダウンロード</h2>
+                <button onclick="testInvoicePDF()" id="btn-invoice">送付状PDFをテスト</button>
+                <div id="test3-result"></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🌐 テスト4: 実際のアプリケーション</h2>
+            <p class="info">下記のフレームで実際のアプリケーションを操作してください：</p>
+            <iframe src="https://stepupcontractmaker-production-81c0.up.railway.app"></iframe>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://stepupcontractmaker-production-81c0.up.railway.app';
+        let lastGeneratedFiles = null;
+
+        function checkItem(id) {
+            document.getElementById(id).classList.add('checked');
+        }
+
+        async function testGenerateAPI() {
+            const result = document.getElementById('test1-result');
+            const responseArea = document.getElementById('test1-response');
+            result.innerHTML = '<div class="result info"><p>📤 書類生成中...</p></div>';
+
+            try {
+                const testData = {
+                    companyName: "株式会社最終テスト",
+                    address: "東京都港区六本木6-10-1",
+                    representativeName: "最終テスト太郎"
+                };
+
+                const response = await fetch(API_BASE + '/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+
+                const data = await response.json();
+                responseArea.value = JSON.stringify(data, null, 2);
+
+                if (response.ok && data.success) {
+                    lastGeneratedFiles = data;
+                    checkItem('check-2');
+                    checkItem('check-3');
+                    checkItem('check-4');
+
+                    // Check filename format
+                    if (data.contractPdfUrl.includes('人材紹介契約書') && data.contractPdfUrl.includes('株式会社最終テスト様')) {
+                        checkItem('check-5');
+                    }
+
+                    // Check postal code
+                    if (data.postalCode && data.postalCode.includes('〒')) {
+                        checkItem('check-6');
+                    }
+
+                    result.innerHTML = '<div class="result success-bg">' +
+                        '<p class="success">✅ 書類生成成功！</p>' +
+                        '<p><strong>契約書PDF:</strong> ' + decodeURIComponent(data.contractPdfUrl) + '</p>' +
+                        '<p><strong>送付状PDF:</strong> ' + decodeURIComponent(data.invoicePdfUrl) + '</p>' +
+                        '<p><strong>郵便番号:</strong> ' + data.postalCode + '</p>' +
+                        '</div>';
+                } else {
+                    result.innerHTML = '<div class="result error-bg"><p class="error">❌ エラー: ' + (data.error || 'Unknown error') + '</p></div>';
+                }
+            } catch (error) {
+                result.innerHTML = '<div class="result error-bg"><p class="error">❌ エラー: ' + error.message + '</p></div>';
+                responseArea.value = error.toString();
+            }
+        }
+
+        async function testContractPDF() {
+            const result = document.getElementById('test2-result');
+
+            if (!lastGeneratedFiles) {
+                result.innerHTML = '<div class="result error-bg"><p class="error">❌ 先にテスト1を実行してください</p></div>';
+                return;
+            }
+
+            result.innerHTML = '<div class="result info"><p>📥 契約書PDFダウンロード中...</p></div>';
+
+            try {
+                const response = await fetch(API_BASE + lastGeneratedFiles.contractPdfUrl);
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const size = (blob.size / 1024).toFixed(2);
+                    const url = API_BASE + lastGeneratedFiles.contractPdfUrl;
+
+                    checkItem('check-7');
+
+                    result.innerHTML = '<div class="result success-bg">' +
+                        '<p class="success">✅ 契約書PDFダウンロード成功！</p>' +
+                        '<p><strong>ファイルサイズ:</strong> ' + size + ' KB</p>' +
+                        '<p><strong>ファイル名:</strong> ' + decodeURIComponent(lastGeneratedFiles.contractPdfUrl.split('/').pop()) + '</p>' +
+                        '<p><a href="' + url + '" target="_blank" style="color: #3b82f6;">📄 PDFを開く（別ウィンドウ）</a></p>' +
+                        '<p class="info" style="margin-top: 10px;">⚠️ PDFを開いて、文字化けがないか確認してください</p>' +
+                        '</div>';
+                } else {
+                    result.innerHTML = '<div class="result error-bg"><p class="error">❌ エラー (HTTP ' + response.status + ')</p></div>';
+                }
+            } catch (error) {
+                result.innerHTML = '<div class="result error-bg"><p class="error">❌ エラー: ' + error.message + '</p></div>';
+            }
+        }
+
+        async function testInvoicePDF() {
+            const result = document.getElementById('test3-result');
+
+            if (!lastGeneratedFiles) {
+                result.innerHTML = '<div class="result error-bg"><p class="error">❌ 先にテスト1を実行してください</p></div>';
+                return;
+            }
+
+            result.innerHTML = '<div class="result info"><p>📥 送付状PDFダウンロード中...</p></div>';
+
+            try {
+                const response = await fetch(API_BASE + lastGeneratedFiles.invoicePdfUrl);
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const size = (blob.size / 1024).toFixed(2);
+                    const url = API_BASE + lastGeneratedFiles.invoicePdfUrl;
+
+                    result.innerHTML = '<div class="result success-bg">' +
+                        '<p class="success">✅ 送付状PDFダウンロード成功！</p>' +
+                        '<p><strong>ファイルサイズ:</strong> ' + size + ' KB</p>' +
+                        '<p><strong>ファイル名:</strong> ' + decodeURIComponent(lastGeneratedFiles.invoicePdfUrl.split('/').pop()) + '</p>' +
+                        '<p><a href="' + url + '" target="_blank" style="color: #3b82f6;">📄 PDFを開く（別ウィンドウ）</a></p>' +
+                        '<p class="info" style="margin-top: 10px;">⚠️ PDFを開いて、文字化けがないか確認してください</p>' +
+                        '</div>';
+                } else {
+                    result.innerHTML = '<div class="result error-bg"><p class="error">❌ エラー (HTTP ' + response.status + ')</p></div>';
+                }
+            } catch (error) {
+                result.innerHTML = '<div class="result error-bg"><p class="error">❌ エラー: ' + error.message + '</p></div>';
+            }
+        }
+
+        // Auto-check page access on load
+        window.addEventListener('load', () => {
+            checkItem('check-1');
+        });
+    </script>
+</body>
+</html>

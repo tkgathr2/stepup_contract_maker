@@ -7,6 +7,8 @@ export interface TemplateData {
   companyName: string
   address: string
   representativeName: string
+  postalCode?: string
+  currentDate?: string
 }
 
 /**
@@ -39,6 +41,8 @@ export async function processTemplate(
     companyName: data.companyName,
     address: data.address,
     representativeName: data.representativeName,
+    postalCode: data.postalCode || "",
+    currentDate: data.currentDate || "",
   })
 
   // 結果をBufferとして取得
@@ -81,6 +85,8 @@ export async function validateTemplate(templatePath: string): Promise<{
       companyName: "テスト会社",
       address: "テスト住所",
       representativeName: "テスト代表者",
+      postalCode: "000-0000",
+      currentDate: "2026/01/07",
     })
 
     return { valid: true, errors: [] }
