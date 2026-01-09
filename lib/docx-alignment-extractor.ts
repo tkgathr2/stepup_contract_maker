@@ -65,11 +65,9 @@ export function applyAlignments(
   const paragraphs: string[] = []
   const paraRegex = /<(p|ol|ul|h[1-6])[^>]*>[\s\S]*?<\/\1>/g
   let match
-  let lastIndex = 0
 
   while ((match = paraRegex.exec(html)) !== null) {
     paragraphs.push(match[0])
-    lastIndex = paraRegex.lastIndex
   }
 
   // 配置情報を適用
