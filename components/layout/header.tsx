@@ -3,7 +3,8 @@
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, FileText } from "lucide-react"
+import { LogOut, User, FileText, Sparkles } from "lucide-react"
+import { APP_VERSION } from "@/lib/constants"
 
 export function Header() {
   const { data: session } = useSession()
@@ -18,6 +19,10 @@ export function Header() {
             </div>
             <span className="font-bold text-gray-800 hidden sm:block">
               契約書生成システム
+            </span>
+            <span className="flex items-center gap-1 bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 text-sm px-3 py-1 rounded-full">
+              <Sparkles className="w-3 h-3" />
+              v{APP_VERSION}
             </span>
           </Link>
 

@@ -1,22 +1,43 @@
-// 履歴データの型定義
-export interface HistoryItem {
-  id: string
-  userId: string
-  companyName: string
-  address: string
-  representativeName: string
-  postalCode: string
-  contractPdfUrl: string
-  contractDocxUrl: string
-  invoicePdfUrl: string
-  invoiceDocxUrl: string
-  createdAt: string // ISO 8601形式
-  emailSent?: boolean
-  emailSentAt?: string
-  emailTo?: string
-}
+// 共通型定義からインポート
+import type { HistoryItem, NewHistoryItem, HistoryUpdateData } from "@/types"
+
+// 型を再エクスポート
+export type { HistoryItem, NewHistoryItem, HistoryUpdateData }
 
 const STORAGE_KEY_PREFIX = "stepup_history_"
+
+/**
+ * 履歴アイテムのランタイムバリデーション
+ */
+function isValidHistoryItem(item: unknown): item is HistoryItem {
+  if (!item || typeof item !== "object") return false
+  const obj = item as Record<string, unknown>
+
+  return (
+    typeof obj.id === "string" &&
+    typeof obj.userId === "string" &&
+    typeof obj.companyName === "string" &&
+    typeof obj.address === "string" &&
+    typeof obj.representativeName === "string" &&
+    typeof obj.postalCode === "string" &&
+    typeof obj.contractPdfUrl === "string" &&
+    typeof obj.contractDocxUrl === "string" &&
+    typeof obj.invoicePdfUrl === "string" &&
+    typeof obj.invoiceDocxUrl === "string" &&
+    typeof obj.createdAt === "string" &&
+    (obj.emailSent === undefined || typeof obj.emailSent === "boolean") &&
+    (obj.emailSentAt === undefined || typeof obj.emailSentAt === "string") &&
+    (obj.emailTo === undefined || typeof obj.emailTo === "string")
+  )
+}
+
+/**
+ * 履歴配列のバリデーション
+ */
+function validateHistoryArray(data: unknown): HistoryItem[] {
+  if (!Array.isArray(data)) return []
+  return data.filter(isValidHistoryItem)
+}
 
 // ユーザーごとのストレージキーを生成
 const getStorageKey = (userId: string): string => {
@@ -32,7 +53,10 @@ export const getHistory = (userId: string): HistoryItem[] => {
     const data = localStorage.getItem(key)
     if (!data) return []
 
-    const items: HistoryItem[] = JSON.parse(data)
+    // ランタイムバリデーションを実行
+    const parsed = JSON.parse(data)
+    const items = validateHistoryArray(parsed)
+
     // 日付順（新しい順）でソート
     return items.sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

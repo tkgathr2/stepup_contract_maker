@@ -10,10 +10,38 @@ export async function GET(
     const { filename: encodedFilename } = await params
     const filename = decodeURIComponent(encodedFilename)
 
-    // セキュリティ: ファイル名にパストラバーサル攻撃を防ぐ
-    if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+    // セキュリティ: ファイル名の厳密なバリデーション
+    // 1. パストラバーサル攻撃を防ぐ（"..", "/", "\", null文字）
+    // 2. 許可する文字: 日本語、英数字、記号（ハイフン、アンダースコア、括弧、ドット、スペース）
+    // 3. 許可する拡張子: .pdf, .docx のみ
+    if (
+      filename.includes("..") ||
+      filename.includes("/") ||
+      filename.includes("\\") ||
+      filename.includes("\0") ||
+      filename === "." ||
+      filename === ".."
+    ) {
       return NextResponse.json(
         { error: "Invalid filename" },
+        { status: 400 }
+      )
+    }
+
+    // 許可する拡張子のチェック
+    const allowedExtensions = [".pdf", ".docx"]
+    const hasValidExtension = allowedExtensions.some(ext => filename.toLowerCase().endsWith(ext))
+    if (!hasValidExtension) {
+      return NextResponse.json(
+        { error: "Invalid file type" },
+        { status: 400 }
+      )
+    }
+
+    // ファイル名の長さチェック（255文字制限）
+    if (filename.length > 255) {
+      return NextResponse.json(
+        { error: "Filename too long" },
         { status: 400 }
       )
     }

@@ -17,9 +17,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { to, subject, body: emailBody, attachments } = body
+    const { to, cc, subject, body: emailBody, attachments } = body
 
-    // バリデーション
+    // メールアドレスの形式チェック（RFC 5322準拠の厳密な検証）
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+
+    // 宛先のバリデーション
     if (!to || typeof to !== "string") {
       return NextResponse.json(
         { error: "送信先メールアドレスは必須です" },
@@ -27,13 +30,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // メールアドレスの形式チェック
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(to)) {
+    if (!emailRegex.test(to.trim())) {
       return NextResponse.json(
         { error: "メールアドレスの形式が正しくありません" },
         { status: 400 }
       )
+    }
+
+    // メールアドレスの長さチェック（RFC 5321準拠、最大254文字）
+    if (to.trim().length > 254) {
+      return NextResponse.json(
+        { error: "メールアドレスが長すぎます" },
+        { status: 400 }
+      )
+    }
+
+    // CCのバリデーション（オプション）
+    let validatedCc: string | undefined
+    if (cc && typeof cc === "string" && cc.trim()) {
+      if (!emailRegex.test(cc.trim())) {
+        return NextResponse.json(
+          { error: "CCメールアドレスの形式が正しくありません" },
+          { status: 400 }
+        )
+      }
+      if (cc.trim().length > 254) {
+        return NextResponse.json(
+          { error: "CCメールアドレスが長すぎます" },
+          { status: 400 }
+        )
+      }
+      validatedCc = cc.trim()
     }
 
     if (!subject || typeof subject !== "string") {
@@ -71,8 +98,25 @@ export async function POST(request: NextRequest) {
     if (attachments && Array.isArray(attachments)) {
       for (const attachment of attachments) {
         if (attachment.url && attachment.filename) {
+          // 添付ファイルURLのセキュリティ検証
+          if (!attachment.url.startsWith("/api/files/")) {
+            return NextResponse.json(
+              { error: "無効な添付ファイルURLです" },
+              { status: 400 }
+            )
+          }
+
           // URLからファイルパスを取得（/api/files/xxx.pdf -> public/generated/xxx.pdf）
           const filename = attachment.url.replace("/api/files/", "")
+
+          // ファイル名のセキュリティ検証（パストラバーサル防止）
+          if (filename.includes("..") || filename.includes("/") || filename.includes("\\") || filename.includes("\0")) {
+            return NextResponse.json(
+              { error: "無効なファイル名です" },
+              { status: 400 }
+            )
+          }
+
           const filePath = path.join(process.cwd(), "public", "generated", filename)
 
           // ファイルの存在確認
@@ -96,13 +140,26 @@ export async function POST(request: NextRequest) {
     }
 
     // メール送信
-    const mailOptions = {
+    const mailOptions: {
+      from: string
+      to: string
+      cc?: string
+      subject: string
+      text: string
+      html: string
+      attachments: { filename: string; path: string }[]
+    } = {
       from: `"${gmailFromName}" <${gmailUser}>`,
       to,
       subject,
       text: emailBody || "",
       html: emailBody ? emailBody.replace(/\n/g, "<br>") : "",
       attachments: mailAttachments,
+    }
+
+    // CCがある場合のみ追加
+    if (validatedCc) {
+      mailOptions.cc = validatedCc
     }
 
     await transporter.sendMail(mailOptions)

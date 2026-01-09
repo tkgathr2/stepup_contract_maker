@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { lookupPostalCode } from "@/lib/postal-code-lookup"
-import { addHistory, updateHistory, HistoryItem } from "@/lib/local-storage"
+import { addHistory, updateHistory } from "@/lib/local-storage"
+import { downloadFile } from "@/lib/download"
 import { EmailForm } from "@/components/forms/EmailForm"
 import { ArrowLeft, Download, FileText, File, Loader2, Mail } from "lucide-react"
+import { FOOTER_TEXT } from "@/lib/constants"
 
 interface GenerateResult {
   success: boolean
@@ -69,6 +71,7 @@ export default function GeneratePage() {
     } catch (error) {
       console.error("郵便番号検索エラー:", error)
       setPostalCode("")
+      toast.error("郵便番号の検索に失敗しました")
     } finally {
       setIsLookingUpPostalCode(false)
     }
@@ -124,6 +127,7 @@ export default function GeneratePage() {
           setCurrentHistoryId(historyItem.id)
         } catch (historyError) {
           console.error("履歴保存エラー:", historyError)
+          toast.error("履歴の保存に失敗しました（書類は正常に生成されました）")
         }
       }
 
@@ -139,14 +143,7 @@ export default function GeneratePage() {
     }
   }
 
-  const handleDownload = (url: string, filename: string) => {
-    const link = document.createElement("a")
-    link.href = url
-    link.download = filename
-    link.click()
-  }
-
-  const handleEmailSuccess = (emailTo: string) => {
+  const handleEmailSuccess = useCallback((emailTo: string) => {
     if (session?.user?.id && currentHistoryId) {
       updateHistory(session.user.id, currentHistoryId, {
         emailSent: true,
@@ -154,15 +151,16 @@ export default function GeneratePage() {
         emailTo,
       })
     }
-  }
+  }, [session?.user?.id, currentHistoryId])
 
-  const getEmailAttachments = () => {
+  // メモ化された添付ファイルリスト
+  const emailAttachments = useMemo(() => {
     if (!result) return []
     return [
       { filename: `人材紹介契約書(${companyName}様).pdf`, url: result.contractPdfUrl },
       { filename: `送付状(${companyName}様).pdf`, url: result.invoicePdfUrl },
     ]
-  }
+  }, [result, companyName])
 
   return (
     <div className="py-6 sm:py-8">
@@ -279,7 +277,7 @@ export default function GeneratePage() {
                     <div className="text-sm font-semibold text-gray-700 mt-4">契約書</div>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
-                        onClick={() => handleDownload(result.contractPdfUrl, `人材紹介契約書(${companyName}様).pdf`)}
+                        onClick={() => downloadFile(result.contractPdfUrl, `人材紹介契約書(${companyName}様).pdf`)}
                         variant="outline"
                         className="w-full h-10 border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation"
                       >
@@ -287,7 +285,7 @@ export default function GeneratePage() {
                         PDF
                       </Button>
                       <Button
-                        onClick={() => handleDownload(result.contractDocxUrl, `人材紹介契約書(${companyName}様).docx`)}
+                        onClick={() => downloadFile(result.contractDocxUrl, `人材紹介契約書(${companyName}様).docx`)}
                         variant="outline"
                         className="w-full h-10 border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation"
                       >
@@ -299,7 +297,7 @@ export default function GeneratePage() {
                     <div className="text-sm font-semibold text-gray-700 mt-4">送付状</div>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
-                        onClick={() => handleDownload(result.invoicePdfUrl, `送付状(${companyName}様).pdf`)}
+                        onClick={() => downloadFile(result.invoicePdfUrl, `送付状(${companyName}様).pdf`)}
                         variant="outline"
                         className="w-full h-10 border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation"
                       >
@@ -307,7 +305,7 @@ export default function GeneratePage() {
                         PDF
                       </Button>
                       <Button
-                        onClick={() => handleDownload(result.invoiceDocxUrl, `送付状(${companyName}様).docx`)}
+                        onClick={() => downloadFile(result.invoiceDocxUrl, `送付状(${companyName}様).docx`)}
                         variant="outline"
                         className="w-full h-10 border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation"
                       >
@@ -387,9 +385,14 @@ export default function GeneratePage() {
           isOpen={isEmailFormOpen}
           onClose={() => setIsEmailFormOpen(false)}
           companyName={companyName}
-          attachments={getEmailAttachments()}
+          attachments={emailAttachments}
           onSuccess={handleEmailSuccess}
         />
+
+        {/* フッター */}
+        <footer className="text-center text-sm text-gray-400 mt-12">
+          {FOOTER_TEXT}
+        </footer>
       </div>
     </div>
   )

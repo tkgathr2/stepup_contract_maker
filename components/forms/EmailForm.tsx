@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { Mail, Loader2, Paperclip, X } from "lucide-react"
+import { validateEmail } from "@/lib/sanitize"
 
 interface Attachment {
   filename: string
@@ -35,6 +36,8 @@ export function EmailForm({
   onSuccess,
 }: EmailFormProps) {
   const [to, setTo] = useState("")
+  const [cc, setCc] = useState("")
+  const [ccError, setCcError] = useState("")
   const [subject, setSubject] = useState(`【株式会社ステップアップ】${companyName}様 契約書類のご送付`)
   const [body, setBody] = useState(
     `${companyName}様
@@ -54,11 +57,41 @@ export function EmailForm({
   const [isLoading, setIsLoading] = useState(false)
   const [selectedAttachments, setSelectedAttachments] = useState<Attachment[]>(attachments)
 
+  // CCのバリデーション
+  const validateCc = (value: string): boolean => {
+    if (!value.trim()) {
+      setCcError("")
+      return true
+    }
+    const result = validateEmail(value)
+    if (!result.isValid) {
+      setCcError(result.error || "CCメールアドレスの形式が正しくありません")
+      return false
+    }
+    setCcError("")
+    return true
+  }
+
+  const handleCcChange = (value: string) => {
+    setCc(value)
+    if (value.trim()) {
+      validateCc(value)
+    } else {
+      setCcError("")
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!to) {
       toast.error("送信先メールアドレスを入力してください")
+      return
+    }
+
+    // CC のバリデーション
+    if (cc.trim() && !validateCc(cc)) {
+      toast.error("CCメールアドレスの形式を確認してください")
       return
     }
 
@@ -72,6 +105,7 @@ export function EmailForm({
         },
         body: JSON.stringify({
           to,
+          cc: cc.trim() || undefined,
           subject,
           body,
           attachments: selectedAttachments,
@@ -126,6 +160,24 @@ export function EmailForm({
               className="border-pink-200 focus:border-pink-400 focus:ring-pink-400"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cc" className="text-gray-700">
+              CC（任意）
+            </Label>
+            <Input
+              id="cc"
+              type="email"
+              value={cc}
+              onChange={(e) => handleCcChange(e.target.value)}
+              placeholder="cc@company.co.jp"
+              disabled={isLoading}
+              className={`border-pink-200 focus:border-pink-400 focus:ring-pink-400 ${ccError ? "border-red-400" : ""}`}
+            />
+            {ccError && (
+              <p className="text-sm text-red-500">{ccError}</p>
+            )}
           </div>
 
           <div className="space-y-2">

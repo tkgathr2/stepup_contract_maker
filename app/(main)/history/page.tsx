@@ -1,38 +1,53 @@
 "use client"
 
 import { useSession } from "next-auth/react"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getHistory, searchHistory, deleteHistory, updateHistory, HistoryItem } from "@/lib/local-storage"
 import { EmailForm } from "@/components/forms/EmailForm"
+import { formatDate } from "@/lib/date-format"
+import { downloadContractPdf, downloadContractDocx, downloadInvoicePdf, downloadInvoiceDocx } from "@/lib/download"
 import { toast } from "sonner"
 import { ArrowLeft, Download, Trash2, Search, FileText, File, Mail, CheckCircle } from "lucide-react"
+import { FOOTER_TEXT } from "@/lib/constants"
 
 export default function HistoryPage() {
-  const { data: session } = useSession()
-  const [history, setHistory] = useState<HistoryItem[]>([])
+  const { data: session, status } = useSession()
   const [searchQuery, setSearchQuery] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [isEmailFormOpen, setIsEmailFormOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
-  const loadHistory = useCallback(() => {
-    if (session?.user?.id) {
-      if (searchQuery.trim()) {
-        setHistory(searchHistory(session.user.id, searchQuery))
-      } else {
-        setHistory(getHistory(session.user.id))
-      }
-    }
-    setIsLoading(false)
-  }, [session?.user?.id, searchQuery])
-
+  // 検索クエリのDebounce処理（300ms）
   useEffect(() => {
-    loadHistory()
-  }, [loadHistory])
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // メモ化された履歴データ
+  // refreshKeyを依存配列に入れて削除後の再計算をトリガー可能にする
+  const history = useMemo<HistoryItem[]>(() => {
+    if (typeof window === "undefined" || !session?.user?.id) return []
+    if (debouncedSearchQuery.trim()) {
+      return searchHistory(session.user.id, debouncedSearchQuery)
+    }
+    return getHistory(session.user.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, debouncedSearchQuery, refreshKey])
+
+  // ローディング状態
+  const isLoading = status === "loading"
+
+  // 履歴を再読み込み（削除後などに使用）
+  const reloadHistory = useCallback(() => {
+    setRefreshKey(prev => prev + 1)
+  }, [])
 
   const handleDelete = (id: string, companyName: string) => {
     if (!session?.user?.id) return
@@ -41,29 +56,11 @@ export default function HistoryPage() {
       const success = deleteHistory(session.user.id, id)
       if (success) {
         toast.success("履歴を削除しました")
-        loadHistory()
+        reloadHistory()
       } else {
         toast.error("削除に失敗しました")
       }
     }
-  }
-
-  const handleDownload = (url: string, filename: string) => {
-    const link = document.createElement("a")
-    link.href = url
-    link.download = filename
-    link.click()
-  }
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("ja-JP", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
   }
 
   const openEmailForm = (item: HistoryItem) => {
@@ -78,7 +75,7 @@ export default function HistoryPage() {
         emailSentAt: new Date().toISOString(),
         emailTo,
       })
-      loadHistory()
+      reloadHistory()
     }
   }
 
@@ -188,7 +185,7 @@ export default function HistoryPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation h-10"
-                          onClick={() => handleDownload(item.contractPdfUrl, `人材紹介契約書(${item.companyName}様).pdf`)}
+                          onClick={() => downloadContractPdf(item.contractPdfUrl, item.companyName)}
                         >
                           <Download className="w-4 h-4 mr-1" />
                           PDF
@@ -197,7 +194,7 @@ export default function HistoryPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation h-10"
-                          onClick={() => handleDownload(item.contractDocxUrl, `人材紹介契約書(${item.companyName}様).docx`)}
+                          onClick={() => downloadContractDocx(item.contractDocxUrl, item.companyName)}
                         >
                           <File className="w-4 h-4 mr-1" />
                           Word
@@ -213,7 +210,7 @@ export default function HistoryPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation h-10"
-                          onClick={() => handleDownload(item.invoicePdfUrl, `送付状(${item.companyName}様).pdf`)}
+                          onClick={() => downloadInvoicePdf(item.invoicePdfUrl, item.companyName)}
                         >
                           <Download className="w-4 h-4 mr-1" />
                           PDF
@@ -222,7 +219,7 @@ export default function HistoryPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1 border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation h-10"
-                          onClick={() => handleDownload(item.invoiceDocxUrl, `送付状(${item.companyName}様).docx`)}
+                          onClick={() => downloadInvoiceDocx(item.invoiceDocxUrl, item.companyName)}
                         >
                           <File className="w-4 h-4 mr-1" />
                           Word
@@ -281,6 +278,11 @@ export default function HistoryPage() {
             onSuccess={handleEmailSuccess}
           />
         )}
+
+        {/* フッター */}
+        <footer className="text-center text-sm text-gray-400 mt-12">
+          {FOOTER_TEXT}
+        </footer>
       </div>
     </div>
   )

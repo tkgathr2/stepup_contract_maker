@@ -1,33 +1,54 @@
 "use client"
 
 import { useSession } from "next-auth/react"
-import { useEffect, useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { getRecentHistory, HistoryItem } from "@/lib/local-storage"
-import { FileText, History, Plus, Download } from "lucide-react"
+import { formatDate } from "@/lib/date-format"
+import { downloadContractPdf, downloadInvoicePdf } from "@/lib/download"
+import { getAnnouncements, getAnnouncementsHidden, setAnnouncementsHidden, AnnouncementItem } from "@/lib/announcements"
+import { FileText, History, Plus, Download, X, Bell } from "lucide-react"
+import { FOOTER_TEXT } from "@/lib/constants"
 
 export default function DashboardPage() {
   const { data: session } = useSession()
-  const [recentHistory, setRecentHistory] = useState<HistoryItem[]>([])
 
-  useEffect(() => {
-    if (session?.user?.id) {
-      setRecentHistory(getRecentHistory(session.user.id, 3))
-    }
-  }, [session?.user?.id])
+  // お知らせの非表示状態を初期化時に読み込み
+  const [showAnnouncements, setShowAnnouncements] = useState(() => {
+    if (typeof window === "undefined") return true
+    return !getAnnouncementsHidden()
+  })
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("ja-JP", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+  // お知らせデータ
+  const announcements = useMemo(() => getAnnouncements(), [])
+
+  // お知らせを閉じる
+  const handleHideAnnouncements = () => {
+    setShowAnnouncements(false)
+    setAnnouncementsHidden(true)
   }
+
+  // お知らせの背景色を取得
+  const getAnnouncementBgColor = (type: AnnouncementItem["type"]) => {
+    switch (type) {
+      case "update":
+        return "bg-pink-50 border-pink-200"
+      case "feature":
+        return "bg-blue-50 border-blue-200"
+      case "improvement":
+        return "bg-blue-50 border-blue-200"
+      default:
+        return "bg-gray-50 border-gray-200"
+    }
+  }
+
+  // メモ化された履歴データ
+  const recentHistory = useMemo<HistoryItem[]>(() => {
+    if (typeof window === "undefined" || !session?.user?.id) return []
+    return getRecentHistory(session.user.id, 3)
+  }, [session])
 
   return (
     <div className="py-6 sm:py-8">
@@ -41,6 +62,59 @@ export default function DashboardPage() {
             契約書・送り状を簡単に作成できます
           </p>
         </div>
+
+        {/* お知らせセクション */}
+        {showAnnouncements && announcements.length > 0 && (
+          <Card className="mb-6 sm:mb-8 bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-200 shadow-md">
+            <CardHeader className="p-4 sm:p-6 pb-2 sm:pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-pink-500" />
+                  <CardTitle className="text-lg text-gray-800">お知らせ</CardTitle>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleHideAnnouncements}
+                  className="text-gray-400 hover:text-gray-600 -mr-2"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-2 sm:pt-3">
+              <div className="space-y-3">
+                {announcements.map((announcement) => (
+                  <div
+                    key={announcement.id}
+                    className={`p-3 rounded-lg border ${getAnnouncementBgColor(announcement.type)}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-gray-800">
+                            {announcement.title}
+                          </span>
+                          {announcement.isNew && (
+                            <span className="bg-pink-500 text-white text-xs font-medium rounded-full px-2 py-0.5">
+                              NEW
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {announcement.message}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {announcement.date}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* クイックアクション */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
@@ -127,12 +201,7 @@ export default function DashboardPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1 sm:flex-none border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation"
-                          onClick={() => {
-                            const link = document.createElement("a")
-                            link.href = item.contractPdfUrl
-                            link.download = `人材紹介契約書(${item.companyName}様).pdf`
-                            link.click()
-                          }}
+                          onClick={() => downloadContractPdf(item.contractPdfUrl, item.companyName)}
                         >
                           <Download className="w-4 h-4 mr-1" />
                           契約書
@@ -141,12 +210,7 @@ export default function DashboardPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1 sm:flex-none border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation"
-                          onClick={() => {
-                            const link = document.createElement("a")
-                            link.href = item.invoicePdfUrl
-                            link.download = `送付状(${item.companyName}様).pdf`
-                            link.click()
-                          }}
+                          onClick={() => downloadInvoicePdf(item.invoicePdfUrl, item.companyName)}
                         >
                           <Download className="w-4 h-4 mr-1" />
                           送付状
@@ -159,6 +223,11 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* フッター */}
+        <footer className="text-center text-sm text-gray-400 mt-12">
+          {FOOTER_TEXT}
+        </footer>
       </div>
     </div>
   )

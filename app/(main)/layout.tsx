@@ -1,4 +1,5 @@
 import { Header } from "@/components/layout/header"
+import { PageErrorBoundary } from "@/components/error-boundary"
 
 export default function MainLayout({
   children,
@@ -8,7 +9,11 @@ export default function MainLayout({
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 safe-area-inset-top safe-area-inset-bottom scroll-smooth tap-highlight-none">
       <Header />
-      <main className="pb-8">{children}</main>
+      <main className="pb-8">
+        <PageErrorBoundary>
+          {children}
+        </PageErrorBoundary>
+      </main>
     </div>
   )
 }

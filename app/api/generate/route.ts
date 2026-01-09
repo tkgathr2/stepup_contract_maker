@@ -5,6 +5,7 @@ import { generatePDF } from "@/lib/pdf-generator"
 import { saveDocxFile } from "@/lib/docx-generator"
 import { lookupPostalCode } from "@/lib/postal-code-lookup"
 import { auth } from "@/lib/auth"
+import { sanitizeInput } from "@/lib/sanitize"
 import { v4 as uuidv4 } from "uuid"
 
 // テンプレートファイルのパス
@@ -28,42 +29,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     let { companyName, address, representativeName, postalCode } = body
 
-    // バリデーション
-    if (!companyName || typeof companyName !== "string") {
+    // バリデーション（sanitizeInputを使用して統一的に処理）
+    try {
+      companyName = sanitizeInput(companyName || "", 100)
+    } catch {
       return NextResponse.json(
-        { error: "会社名は必須です" },
-        { status: 400 }
-      )
-    }
-    if (companyName.length > 100) {
-      return NextResponse.json(
-        { error: "会社名は100文字以内で入力してください" },
+        { error: "会社名は必須です（100文字以内）" },
         { status: 400 }
       )
     }
 
-    if (!address || typeof address !== "string") {
+    try {
+      address = sanitizeInput(address || "", 500)
+    } catch {
       return NextResponse.json(
-        { error: "住所は必須です" },
-        { status: 400 }
-      )
-    }
-    if (address.length > 500) {
-      return NextResponse.json(
-        { error: "住所は500文字以内で入力してください" },
+        { error: "住所は必須です（500文字以内）" },
         { status: 400 }
       )
     }
 
-    if (!representativeName || typeof representativeName !== "string") {
+    try {
+      representativeName = sanitizeInput(representativeName || "", 100)
+    } catch {
       return NextResponse.json(
-        { error: "代表者名は必須です" },
-        { status: 400 }
-      )
-    }
-    if (representativeName.length > 100) {
-      return NextResponse.json(
-        { error: "代表者名は100文字以内で入力してください" },
+        { error: "代表者名は必須です（100文字以内）" },
         { status: 400 }
       )
     }
