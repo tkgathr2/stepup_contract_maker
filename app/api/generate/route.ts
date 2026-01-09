@@ -4,6 +4,7 @@ import { processTemplate } from "@/lib/template-processor"
 import { generatePDF } from "@/lib/pdf-generator"
 import { saveDocxFile } from "@/lib/docx-generator"
 import { lookupPostalCode } from "@/lib/postal-code-lookup"
+import { auth } from "@/lib/auth"
 import { v4 as uuidv4 } from "uuid"
 
 // テンプレートファイルのパス
@@ -13,6 +14,15 @@ const INVOICE_TEMPLATE_PATH = "templates/invoice_template.docx"
 // PDF生成
 export async function POST(request: NextRequest) {
   const requestId = uuidv4().slice(0, 8)
+
+  // 認証チェック
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "認証が必要です" },
+      { status: 401 }
+    )
+  }
 
   try {
     const body = await request.json()
