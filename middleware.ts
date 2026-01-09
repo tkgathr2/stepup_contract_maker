@@ -11,6 +11,7 @@ export async function middleware(request: NextRequest) {
   const isAuthApi = pathname.startsWith("/api/auth")
   const isHealthApi = pathname === "/api/health"
   const isFilesApi = pathname.startsWith("/api/files")
+  const isApi = pathname.startsWith("/api/")
 
   // 認証API、ヘルスチェック、ファイル配信はスキップ
   if (isAuthApi || isHealthApi || isFilesApi) {
@@ -21,6 +22,10 @@ export async function middleware(request: NextRequest) {
   if (!isLoggedIn) {
     // ログインページはそのままアクセス可能
     if (isLoginPage) {
+      return NextResponse.next()
+    }
+    // APIルートの場合はそのまま通す（API側で認証チェックを行う）
+    if (isApi) {
       return NextResponse.next()
     }
     // それ以外はログインページにリダイレクト
