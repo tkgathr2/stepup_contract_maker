@@ -51,3 +51,8 @@ next-env.d.ts
 # database files
 *.db
 *.db-journal
+
+# Windows reserved names
+nul
+NUL
+test_invoice.pdf
