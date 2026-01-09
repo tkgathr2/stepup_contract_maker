@@ -11,6 +11,9 @@ export interface HistoryItem {
   invoicePdfUrl: string
   invoiceDocxUrl: string
   createdAt: string // ISO 8601形式
+  emailSent?: boolean
+  emailSentAt?: string
+  emailTo?: string
 }
 
 const STORAGE_KEY_PREFIX = "stepup_history_"
@@ -112,6 +115,30 @@ export const clearHistory = (userId: string): boolean => {
     return true
   } catch (error) {
     console.error("Failed to clear history:", error)
+    return false
+  }
+}
+
+// 履歴を更新（メール送信フラグなど）
+export const updateHistory = (
+  userId: string,
+  historyId: string,
+  updates: Partial<Pick<HistoryItem, "emailSent" | "emailSentAt" | "emailTo">>
+): boolean => {
+  if (typeof window === "undefined") return false
+
+  try {
+    const key = getStorageKey(userId)
+    const existing = getHistory(userId)
+    const index = existing.findIndex((item) => item.id === historyId)
+
+    if (index === -1) return false
+
+    existing[index] = { ...existing[index], ...updates }
+    localStorage.setItem(key, JSON.stringify(existing))
+    return true
+  } catch (error) {
+    console.error("Failed to update history:", error)
     return false
   }
 }

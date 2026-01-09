@@ -123,3 +123,96 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* パステルピンクテーマ */
+:root {
+  --pastel-pink-50: #fdf2f8;
+  --pastel-pink-100: #fce7f3;
+  --pastel-pink-200: #fbcfe8;
+  --pastel-pink-300: #f9a8d4;
+  --pastel-pink-400: #f472b6;
+  --pastel-pink-500: #ec4899;
+  --pastel-rose-50: #fff1f2;
+  --pastel-rose-100: #ffe4e6;
+  --pastel-rose-200: #fecdd3;
+  --pastel-rose-300: #fda4af;
+  --pastel-rose-400: #fb7185;
+}
+
+/* モバイル対応: タッチ操作の最適化 */
+@layer utilities {
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* セーフエリア対応 (iPhone X以降のノッチ対応) */
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-inset-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-area-inset-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* スクロールのスナップ */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* タップハイライトの無効化 */
+  .tap-highlight-none {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* モバイルでのフォントサイズ最適化 */
+@media (max-width: 640px) {
+  html {
+    font-size: 15px;
+  }
+
+  /* ボタンのタッチターゲットサイズ確保 */
+  button,
+  [role="button"],
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 入力フィールドのズーム防止 */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* カード・ボタンのアニメーション */
+@layer utilities {
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.1),
+                0 8px 10px -6px rgba(236, 72, 153, 0.1);
+  }
+
+  .btn-press:active {
+    transform: scale(0.98);
+  }
+}

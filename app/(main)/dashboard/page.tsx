@@ -30,30 +30,30 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="py-8">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="py-6 sm:py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* ヘッダー */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
             ようこそ、{session?.user?.name || "ゲスト"}さん
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">
             契約書・送り状を簡単に作成できます
           </p>
         </div>
 
         {/* クイックアクション */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Link href="/generate">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-pink-200 bg-white/80 backdrop-blur-sm h-full">
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full">
-                    <Plus className="w-6 h-6 text-white" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <Link href="/generate" className="touch-manipulation">
+            <Card className="card-hover cursor-pointer border-pink-200 bg-white/80 backdrop-blur-sm h-full active:scale-[0.98] transition-transform">
+              <CardHeader className="p-4 sm:p-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="p-2.5 sm:p-3 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full shadow-md">
+                    <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl text-gray-800">新規作成</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-lg sm:text-xl text-gray-800">新規作成</CardTitle>
+                    <CardDescription className="text-sm">
                       契約書・送り状を作成する
                     </CardDescription>
                   </div>
@@ -62,16 +62,16 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/history">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-pink-200 bg-white/80 backdrop-blur-sm h-full">
-              <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full">
-                    <History className="w-6 h-6 text-white" />
+          <Link href="/history" className="touch-manipulation">
+            <Card className="card-hover cursor-pointer border-pink-200 bg-white/80 backdrop-blur-sm h-full active:scale-[0.98] transition-transform">
+              <CardHeader className="p-4 sm:p-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="p-2.5 sm:p-3 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full shadow-md">
+                    <History className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl text-gray-800">履歴を見る</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-lg sm:text-xl text-gray-800">履歴を見る</CardTitle>
+                    <CardDescription className="text-sm">
                       過去の生成履歴を確認する
                     </CardDescription>
                   </div>
@@ -110,23 +110,23 @@ export default function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {recentHistory.map((item) => (
                   <div
                     key={item.id}
-                    className="p-4 border border-pink-100 rounded-lg hover:bg-pink-50/50 transition-colors"
+                    className="p-3 sm:p-4 border border-pink-100 rounded-lg hover:bg-pink-50/50 transition-colors"
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-gray-800">{item.companyName}</h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-gray-800 truncate">{item.companyName}</h3>
                         <p className="text-sm text-gray-500">{item.representativeName} 様</p>
                         <p className="text-xs text-gray-400 mt-1">{formatDate(item.createdAt)}</p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-shrink-0">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-pink-200 text-pink-600 hover:bg-pink-50"
+                          className="flex-1 sm:flex-none border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation"
                           onClick={() => {
                             const link = document.createElement("a")
                             link.href = item.contractPdfUrl
@@ -140,7 +140,7 @@ export default function DashboardPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-pink-200 text-pink-600 hover:bg-pink-50"
+                          className="flex-1 sm:flex-none border-pink-200 text-pink-600 hover:bg-pink-50 active:scale-[0.98] touch-manipulation"
                           onClick={() => {
                             const link = document.createElement("a")
                             link.href = item.invoicePdfUrl
