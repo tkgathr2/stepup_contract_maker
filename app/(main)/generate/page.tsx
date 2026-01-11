@@ -167,10 +167,10 @@ export default function GeneratePage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         {/* ヘッダー */}
         <div className="mb-5 sm:mb-6">
-          <Link href="/dashboard" className="touch-manipulation">
+          <Link href="/" className="touch-manipulation">
             <Button variant="ghost" className="mb-3 sm:mb-4 text-gray-600 hover:text-gray-800 -ml-2 active:scale-[0.98]">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              ダッシュボードに戻る
+              トップページに戻る
             </Button>
           </Link>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">

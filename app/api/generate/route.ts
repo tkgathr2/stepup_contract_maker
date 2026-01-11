@@ -143,9 +143,26 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     logError(requestId, "system", "anonymous", error as Error)
-    console.error("Error generating PDF:", error)
+
+    // 詳細なエラー情報をログに記録
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    console.error("[Generate] Error generating PDF:", {
+      requestId,
+      error: errorMessage,
+      stack: errorStack,
+    })
+
+    // 開発環境では詳細なエラーを返す
+    const isDevelopment = process.env.NODE_ENV === "development"
     return NextResponse.json(
-      { error: "PDFの生成に失敗しました" },
+      {
+        error: "PDFの生成に失敗しました",
+        ...(isDevelopment && {
+          details: errorMessage,
+          stack: errorStack,
+        }),
+      },
       { status: 500 }
     )
   }

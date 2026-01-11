@@ -3,9 +3,23 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request })
+  // secretパラメータを明示的に指定
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET
+  })
   const isLoggedIn = !!token
   const pathname = request.nextUrl.pathname
+
+  // デバッグログ（開発環境のみ）
+  if (process.env.NODE_ENV === "development") {
+    console.log("[Middleware] Path:", pathname)
+    console.log("[Middleware] IsLoggedIn:", isLoggedIn)
+    console.log("[Middleware] Token exists:", !!token)
+    if (token) {
+      console.log("[Middleware] Token.id:", token.id)
+    }
+  }
 
   const isLoginPage = pathname === "/login"
   const isAuthApi = pathname.startsWith("/api/auth")
@@ -15,11 +29,21 @@ export async function middleware(request: NextRequest) {
 
   // 認証API、ヘルスチェック、ファイル配信はスキップ
   if (isAuthApi || isHealthApi || isFilesApi) {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Middleware] Skipping auth/health/files API")
+    }
     return NextResponse.next()
   }
 
+  // トップページ（/）は認証なしでアクセス可能
+  const isTopPage = pathname === "/"
+
   // 未ログインの場合
   if (!isLoggedIn) {
+    // トップページはそのままアクセス可能
+    if (isTopPage) {
+      return NextResponse.next()
+    }
     // ログインページはそのままアクセス可能
     if (isLoginPage) {
       return NextResponse.next()
@@ -29,12 +53,18 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next()
     }
     // それ以外はログインページにリダイレクト
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Middleware] Redirecting to login")
+    }
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // ログイン済みでログインページにアクセスした場合はダッシュボードへ
+  // ログイン済みでログインページにアクセスした場合はトップページへ
   if (isLoggedIn && isLoginPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Middleware] Already logged in, redirecting to top page")
+    }
+    return NextResponse.redirect(new URL("/", request.url))
   }
 
   return NextResponse.next()

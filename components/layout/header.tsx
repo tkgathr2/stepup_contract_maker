@@ -13,7 +13,7 @@ export function Header() {
     <header className="bg-white/80 backdrop-blur-sm border-b border-pink-100 sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="p-2 bg-gradient-to-br from-pink-400 to-rose-400 rounded-lg">
               <FileText className="w-5 h-5 text-white" />
             </div>
