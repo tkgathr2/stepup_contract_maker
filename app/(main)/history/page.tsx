@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getHistory, searchHistory, deleteHistory, updateHistory, HistoryItem } from "@/lib/local-storage"
-import { EmailForm } from "@/components/forms/EmailForm"
 import { formatDate } from "@/lib/date-format"
 import { downloadContractPdf, downloadContractDocx, downloadInvoicePdf, downloadInvoiceDocx } from "@/lib/download"
 import { toast } from "sonner"
@@ -18,8 +17,6 @@ export default function HistoryPage() {
   const { data: session, status } = useSession()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
-  const [isEmailFormOpen, setIsEmailFormOpen] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   // 検索クエリのDebounce処理（300ms）
@@ -63,28 +60,62 @@ export default function HistoryPage() {
     }
   }
 
-  const openEmailForm = (item: HistoryItem) => {
-    setSelectedItem(item)
-    setIsEmailFormOpen(true)
-  }
+  const handleEmailClick = useCallback(async (item: HistoryItem) => {
+    const senderName = session?.user?.name || "担当者"
+    const subject = "契約書送付のご案内"
 
-  const handleEmailSuccess = (emailTo: string) => {
-    if (session?.user?.id && selectedItem) {
-      updateHistory(session.user.id, selectedItem.id, {
-        emailSent: true,
-        emailSentAt: new Date().toISOString(),
-        emailTo,
+    // ファイルのダウンロードリンク（絶対URL）
+    const baseUrl = window.location.origin
+    const contractPdfUrl = `${baseUrl}${item.contractPdfUrl}`
+
+    // 短縮URLを取得
+    let shortContractUrl = contractPdfUrl
+
+    console.log("[Email] Requesting short URL for:", contractPdfUrl)
+
+    try {
+      const contractRes = await fetch("/api/shorten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: contractPdfUrl }),
       })
-      reloadHistory()
+      const contractData = await contractRes.json()
+      console.log("[Email] Short URL response:", contractData)
+      if (contractData.success && contractData.shortUrl) {
+        shortContractUrl = contractData.shortUrl
+        console.log("[Email] Using short URL:", shortContractUrl)
+      } else {
+        console.log("[Email] Short URL failed, using original URL")
+      }
+    } catch (error) {
+      console.error("[Email] 短縮URL取得エラー:", error)
+      // エラー時は元のURLを使用
     }
-  }
 
-  const getEmailAttachments = (item: HistoryItem) => {
-    return [
-      { filename: `人材紹介契約書(${item.companyName}様).pdf`, url: item.contractPdfUrl },
-      { filename: `送付状(${item.companyName}様).pdf`, url: item.invoicePdfUrl },
-    ]
-  }
+    const body = `${item.companyName}様
+
+平素より大変お世話になっております。
+株式会社ステップアップの${senderName}でございます。
+
+このたびの契約書（案）を添付にてお送りいたします。
+お手数ではございますが、内容をご確認いただき、
+ご承認いただけましたらご連絡くださいませ。
+
+確認が取れ次第、正式な契約書を作成・押印のうえ
+郵送させていただきます。
+
+ご不明な点がございましたら、お気軽にお申し付けください。
+何卒よろしくお願い申し上げます。
+
+【ダウンロードリンク】
+・契約書: ${shortContractUrl}
+
+---
+${senderName}`
+
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    window.open(gmailUrl, '_blank')
+  }, [session])
 
   return (
     <div className="py-6 sm:py-8">
@@ -248,7 +279,7 @@ export default function HistoryPage() {
                           variant="outline"
                           size="sm"
                           className="border-blue-200 text-blue-600 hover:bg-blue-50 active:scale-[0.98] touch-manipulation h-9"
-                          onClick={() => openEmailForm(item)}
+                          onClick={() => handleEmailClick(item)}
                         >
                           <Mail className="w-4 h-4 mr-1" />
                           再送信
@@ -257,7 +288,7 @@ export default function HistoryPage() {
                     ) : (
                       <Button
                         className="w-full h-10 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 active:scale-[0.98] touch-manipulation"
-                        onClick={() => openEmailForm(item)}
+                        onClick={() => handleEmailClick(item)}
                       >
                         <Mail className="w-4 h-4 mr-2" />
                         メールで送信
@@ -268,20 +299,6 @@ export default function HistoryPage() {
               </Card>
             ))}
           </div>
-        )}
-
-        {/* メール送信フォーム */}
-        {selectedItem && (
-          <EmailForm
-            isOpen={isEmailFormOpen}
-            onClose={() => {
-              setIsEmailFormOpen(false)
-              setSelectedItem(null)
-            }}
-            companyName={selectedItem.companyName}
-            attachments={getEmailAttachments(selectedItem)}
-            onSuccess={handleEmailSuccess}
-          />
         )}
 
         {/* フッター */}
