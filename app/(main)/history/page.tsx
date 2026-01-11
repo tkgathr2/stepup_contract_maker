@@ -91,10 +91,10 @@ export default function HistoryPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         {/* ヘッダー */}
         <div className="mb-5 sm:mb-6">
-          <Link href="/dashboard" className="touch-manipulation">
+          <Link href="/" className="touch-manipulation">
             <Button variant="ghost" className="mb-3 sm:mb-4 text-gray-600 hover:text-gray-800 -ml-2 active:scale-[0.98]">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              ダッシュボードに戻る
+              トップページに戻る
             </Button>
           </Link>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">生成履歴</h1>
@@ -147,15 +147,20 @@ export default function HistoryPage() {
                 key={item.id}
                 className="border-pink-200 bg-white/80 backdrop-blur-sm card-hover"
               >
-                <CardHeader className="pb-2 p-4 sm:p-6 sm:pb-2">
+                <CardHeader className="pb-0 p-4 sm:p-6 sm:pb-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <CardTitle className="text-lg sm:text-xl text-gray-800 truncate">
                         {item.companyName}
                       </CardTitle>
-                      <CardDescription className="mt-1 text-sm">
-                        {item.representativeName} 様
-                      </CardDescription>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <CardDescription className="text-sm">
+                          {item.representativeName} 様
+                        </CardDescription>
+                        <span className="text-sm text-gray-500">
+                          作成者: {item.createdByName || "-"}
+                        </span>
+                      </div>
                     </div>
                     <Button
                       variant="ghost"
@@ -167,7 +172,7 @@ export default function HistoryPage() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-2 sm:pt-2">
+                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
                   <div className="text-sm text-gray-500 mb-4">
                     <p className="truncate">{item.postalCode && `${item.postalCode} `}{item.address}</p>
                     <p className="text-xs text-gray-400 mt-1">

@@ -27,7 +27,8 @@ function isValidHistoryItem(item: unknown): item is HistoryItem {
     typeof obj.createdAt === "string" &&
     (obj.emailSent === undefined || typeof obj.emailSent === "boolean") &&
     (obj.emailSentAt === undefined || typeof obj.emailSentAt === "string") &&
-    (obj.emailTo === undefined || typeof obj.emailTo === "string")
+    (obj.emailTo === undefined || typeof obj.emailTo === "string") &&
+    (obj.createdByName === undefined || typeof obj.createdByName === "string")
   )
 }
 
@@ -73,10 +74,20 @@ export const addHistory = (item: Omit<HistoryItem, "id" | "createdAt">): History
     throw new Error("localStorage is not available on server side")
   }
 
+  // 作成者名を100文字に切り詰める（空文字列の場合はundefined）
+  let createdByName: string | undefined = item.createdByName
+  if (createdByName) {
+    createdByName = createdByName.slice(0, 100)
+    if (createdByName === "") {
+      createdByName = undefined
+    }
+  }
+
   const newItem: HistoryItem = {
     ...item,
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
+    createdByName,
   }
 
   try {
@@ -119,7 +130,8 @@ export const searchHistory = (
   return items.filter((item) =>
     item.companyName.toLowerCase().includes(lowerQuery) ||
     item.representativeName.toLowerCase().includes(lowerQuery) ||
-    item.address.toLowerCase().includes(lowerQuery)
+    item.address.toLowerCase().includes(lowerQuery) ||
+    (item.createdByName && item.createdByName.toLowerCase().includes(lowerQuery))
   )
 }
 

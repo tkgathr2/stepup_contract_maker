@@ -175,6 +175,7 @@ export default function HomePage() {
             contractDocxUrl: data.contractDocxUrl,
             invoicePdfUrl: data.invoicePdfUrl,
             invoiceDocxUrl: data.invoiceDocxUrl,
+            createdByName: session.user.name || undefined,
           })
           setCurrentHistoryId(historyItem.id)
         } catch (historyError) {
@@ -219,6 +220,8 @@ export default function HomePage() {
     // 短縮URLを取得
     let shortContractUrl = contractPdfUrl
 
+    console.log("[Email] Requesting short URL for:", contractPdfUrl)
+
     try {
       const contractRes = await fetch("/api/shorten", {
         method: "POST",
@@ -226,11 +229,15 @@ export default function HomePage() {
         body: JSON.stringify({ url: contractPdfUrl }),
       })
       const contractData = await contractRes.json()
+      console.log("[Email] Short URL response:", contractData)
       if (contractData.success && contractData.shortUrl) {
         shortContractUrl = contractData.shortUrl
+        console.log("[Email] Using short URL:", shortContractUrl)
+      } else {
+        console.log("[Email] Short URL failed, using original URL")
       }
     } catch (error) {
-      console.error("短縮URL取得エラー:", error)
+      console.error("[Email] 短縮URL取得エラー:", error)
       // エラー時は元のURLを使用
     }
 
@@ -573,6 +580,7 @@ ${senderName}`
                               <div className="min-w-0 flex-1">
                                 <h3 className="font-semibold text-gray-800 truncate">{item.companyName}</h3>
                                 <p className="text-sm text-gray-500">{item.representativeName} 様</p>
+                                <p className="text-sm text-gray-500">作成者: {item.createdByName || "-"}</p>
                                 <p className="text-xs text-gray-400 mt-1">{formatDate(item.createdAt)}</p>
                               </div>
                               <div className="flex gap-2 flex-shrink-0">

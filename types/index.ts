@@ -49,6 +49,7 @@ export interface HistoryItem {
   emailSent?: boolean
   emailSentAt?: string
   emailTo?: string
+  createdByName?: string // 作成者名
 }
 
 /**
