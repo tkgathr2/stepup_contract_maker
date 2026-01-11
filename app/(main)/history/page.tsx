@@ -145,7 +145,7 @@ export default function HistoryPage() {
             {history.map((item) => (
               <Card
                 key={item.id}
-                className="border-pink-200 bg-white/80 backdrop-blur-sm card-hover"
+                className="border-pink-200 bg-white/80 backdrop-blur-sm card-hover gap-0"
               >
                 <CardHeader className="pb-0 p-4 sm:p-6 sm:pb-0">
                   <div className="flex items-start justify-between gap-2">
@@ -173,7 +173,7 @@ export default function HistoryPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
-                  <div className="text-sm text-gray-500 mb-4 -mt-2">
+                  <div className="text-sm text-gray-500 mb-4">
                     <p className="truncate">{item.postalCode && `${item.postalCode} `}{item.address}</p>
                     <p className="text-xs text-gray-400 mt-1">
                       作成日時: {formatDate(item.createdAt)}
