@@ -215,34 +215,19 @@ export default function HomePage() {
     // ファイルのダウンロードリンク（絶対URL）
     const baseUrl = window.location.origin
     const contractPdfUrl = `${baseUrl}${result.contractPdfUrl}`
-    const invoicePdfUrl = `${baseUrl}${result.invoicePdfUrl}`
 
     // 短縮URLを取得
     let shortContractUrl = contractPdfUrl
-    let shortInvoiceUrl = invoicePdfUrl
 
     try {
-      const [contractRes, invoiceRes] = await Promise.all([
-        fetch("/api/shorten", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: contractPdfUrl }),
-        }),
-        fetch("/api/shorten", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: invoicePdfUrl }),
-        }),
-      ])
-
+      const contractRes = await fetch("/api/shorten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: contractPdfUrl }),
+      })
       const contractData = await contractRes.json()
-      const invoiceData = await invoiceRes.json()
-
       if (contractData.success && contractData.shortUrl) {
         shortContractUrl = contractData.shortUrl
-      }
-      if (invoiceData.success && invoiceData.shortUrl) {
-        shortInvoiceUrl = invoiceData.shortUrl
       }
     } catch (error) {
       console.error("短縮URL取得エラー:", error)
@@ -266,7 +251,6 @@ export default function HomePage() {
 
 【ダウンロードリンク】
 ・契約書: ${shortContractUrl}
-・送付状: ${shortInvoiceUrl}
 
 ---
 ${senderName}`
