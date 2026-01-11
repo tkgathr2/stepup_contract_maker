@@ -173,7 +173,7 @@ export default function HistoryPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
-                  <div className="text-sm text-gray-500 mb-4">
+                  <div className="text-sm text-gray-500 mb-4 -mt-2">
                     <p className="truncate">{item.postalCode && `${item.postalCode} `}{item.address}</p>
                     <p className="text-xs text-gray-400 mt-1">
                       作成日時: {formatDate(item.createdAt)}
