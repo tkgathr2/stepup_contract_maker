@@ -147,7 +147,7 @@ export default function HistoryPage() {
                 key={item.id}
                 className="border-pink-200 bg-white/80 backdrop-blur-sm card-hover gap-0"
               >
-                <CardHeader className="pb-0 p-4 sm:p-6 sm:pb-0">
+                <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <CardTitle className="text-lg sm:text-xl text-gray-800 truncate">
@@ -172,7 +172,7 @@ export default function HistoryPage() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+                <CardContent className="px-4 sm:px-6 pt-0 pb-4 sm:pb-6">
                   <div className="text-sm text-gray-500 mb-4">
                     <p className="truncate">{item.postalCode && `${item.postalCode} `}{item.address}</p>
                     <p className="text-xs text-gray-400 mt-1">
