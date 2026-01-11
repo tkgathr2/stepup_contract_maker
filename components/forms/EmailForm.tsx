@@ -26,6 +26,7 @@ interface EmailFormProps {
   companyName: string
   attachments: Attachment[]
   onSuccess?: (emailTo: string) => void
+  senderName?: string
 }
 
 export function EmailForm({
@@ -34,6 +35,7 @@ export function EmailForm({
   companyName,
   attachments,
   onSuccess,
+  senderName = "株式会社ステップアップ",
 }: EmailFormProps) {
   const [to, setTo] = useState("")
   const [cc, setCc] = useState("")
@@ -45,13 +47,11 @@ export function EmailForm({
 お世話になっております。
 株式会社ステップアップです。
 
-人材紹介契約書および送付状を添付いたしましたので、
-ご確認のほどよろしくお願いいたします。
-
-ご不明な点がございましたら、お気軽にお問い合わせください。
+契約書を添付いたしますので確認してください。
+OKなら作成してハンコ押して送ります。
 
 ---
-株式会社ステップアップ
+${senderName}
 `
   )
   const [isLoading, setIsLoading] = useState(false)

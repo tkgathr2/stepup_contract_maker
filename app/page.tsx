@@ -205,27 +205,75 @@ export default function HomePage() {
     }
   }, [session?.user?.id, currentHistoryId])
 
-  // Gmail Web版を開く
-  const handleEmailClick = useCallback(() => {
+  // Gmail Web版を開く（短縮URL使用）
+  const handleEmailClick = useCallback(async () => {
     if (!result) return
 
-    const subject = `【株式会社ステップアップ】${companyName}様 契約書類のご送付`
+    const senderName = session?.user?.name || "担当者"
+    const subject = "契約書送付のご案内"
+
+    // ファイルのダウンロードリンク（絶対URL）
+    const baseUrl = window.location.origin
+    const contractPdfUrl = `${baseUrl}${result.contractPdfUrl}`
+    const invoicePdfUrl = `${baseUrl}${result.invoicePdfUrl}`
+
+    // 短縮URLを取得
+    let shortContractUrl = contractPdfUrl
+    let shortInvoiceUrl = invoicePdfUrl
+
+    try {
+      const [contractRes, invoiceRes] = await Promise.all([
+        fetch("/api/shorten", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: contractPdfUrl }),
+        }),
+        fetch("/api/shorten", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: invoicePdfUrl }),
+        }),
+      ])
+
+      const contractData = await contractRes.json()
+      const invoiceData = await invoiceRes.json()
+
+      if (contractData.success && contractData.shortUrl) {
+        shortContractUrl = contractData.shortUrl
+      }
+      if (invoiceData.success && invoiceData.shortUrl) {
+        shortInvoiceUrl = invoiceData.shortUrl
+      }
+    } catch (error) {
+      console.error("短縮URL取得エラー:", error)
+      // エラー時は元のURLを使用
+    }
+
     const body = `${companyName}様
 
-お世話になっております。
-株式会社ステップアップです。
+平素より大変お世話になっております。
+株式会社ステップアップの${senderName}でございます。
 
-人材紹介契約書および送付状を添付いたしましたので、
-ご確認のほどよろしくお願いいたします。
+このたびの契約書（案）を添付にてお送りいたします。
+お手数ではございますが、内容をご確認いただき、
+ご承認いただけましたらご連絡くださいませ。
 
-ご不明な点がございましたら、お気軽にお問い合わせください。
+確認が取れ次第、正式な契約書を作成・押印のうえ
+郵送させていただきます。
+
+ご不明な点がございましたら、お気軽にお申し付けください。
+何卒よろしくお願い申し上げます。
+
+【ダウンロードリンク】
+・契約書: ${shortContractUrl}
+・送付状: ${shortInvoiceUrl}
 
 ---
-株式会社ステップアップ`
+${senderName}`
 
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
     window.open(gmailUrl, '_blank')
-  }, [result, companyName])
+  }, [result, companyName, session])
 
   // メモ化された添付ファイルリスト
   const emailAttachments = useMemo(() => {
@@ -439,7 +487,7 @@ export default function HomePage() {
                             </Button>
                           </div>
 
-                          {/* メール送信ボタン */}
+                          {/* メール送信ボタン（Gmail Web版を開く） */}
                           <div className="pt-4 border-t border-pink-100 mt-4">
                             <Button
                               onClick={handleEmailClick}
@@ -579,6 +627,7 @@ export default function HomePage() {
                 companyName={companyName}
                 attachments={emailAttachments}
                 onSuccess={handleEmailSuccess}
+                senderName={session?.user?.name || "株式会社ステップアップ"}
               />
 
               {/* フッター */}
