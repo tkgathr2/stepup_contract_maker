@@ -142,8 +142,8 @@ export default function TemplatesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">テンプレート管理</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">テンプレート管理</h1>
+          <p className="text-muted-foreground">
             Wordテンプレートをアップロード・管理します
           </p>
         </div>
@@ -191,7 +191,7 @@ export default function TemplatesPage() {
                     onChange={(e) => setTemplateFile(e.target.files?.[0] || null)}
                     required
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     .docx形式、10MB以下
                   </p>
                 </div>
@@ -218,9 +218,9 @@ export default function TemplatesPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-center py-4 text-gray-500">読み込み中...</p>
+            <p className="text-center py-4 text-muted-foreground">読み込み中...</p>
           ) : templates.length === 0 ? (
-            <p className="text-center py-4 text-gray-500">
+            <p className="text-center py-4 text-muted-foreground">
               テンプレートがありません。「テンプレートを追加」ボタンからアップロードしてください。
             </p>
           ) : (
@@ -288,15 +288,15 @@ export default function TemplatesPage() {
         <CardContent>
           <div className="space-y-2 text-sm">
             <div className="flex gap-4">
-              <code className="bg-gray-100 px-2 py-1 rounded">{"{companyName}"}</code>
+              <code className="bg-muted px-2 py-1 rounded text-sm">{"{companyName}"}</code>
               <span>会社名</span>
             </div>
             <div className="flex gap-4">
-              <code className="bg-gray-100 px-2 py-1 rounded">{"{address}"}</code>
+              <code className="bg-muted px-2 py-1 rounded text-sm">{"{address}"}</code>
               <span>住所</span>
             </div>
             <div className="flex gap-4">
-              <code className="bg-gray-100 px-2 py-1 rounded">{"{representativeName}"}</code>
+              <code className="bg-muted px-2 py-1 rounded text-sm">{"{representativeName}"}</code>
               <span>代表者名</span>
             </div>
           </div>

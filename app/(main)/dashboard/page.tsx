@@ -13,6 +13,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import Link from "next/link"
+import {
+  FileText,
+  Layers,
+  FolderOpen,
+  Clock,
+  Download,
+  TrendingUp,
+  CalendarDays,
+  FileStack,
+  ArrowRight,
+} from "lucide-react"
 
 interface History {
   id: string
@@ -37,18 +48,15 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 最近の履歴を取得
         const historyRes = await fetch("/api/history?limit=5")
         if (historyRes.ok) {
           const historyData = await historyRes.json()
           setRecentHistories(historyData.histories)
 
-          // 統計情報を計算
           const totalRes = await fetch("/api/history?limit=1")
           if (totalRes.ok) {
             const totalData = await totalRes.json()
 
-            // 今月の生成数を計算
             const now = new Date()
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
             const monthRes = await fetch(
@@ -56,7 +64,6 @@ export default function DashboardPage() {
             )
             const monthData = monthRes.ok ? await monthRes.json() : { total: 0 }
 
-            // テンプレート数を取得
             const templatesRes = await fetch("/api/templates")
             const templatesData = templatesRes.ok
               ? await templatesRes.json()
@@ -95,154 +102,187 @@ export default function DashboardPage() {
     link.click()
   }
 
+  const statsCards = [
+    {
+      label: "\u7dcf\u751f\u6210\u6570",
+      value: stats?.totalGenerated || 0,
+      description: "\u3053\u308c\u307e\u3067\u306b\u751f\u6210\u3057\u305fPDF\u306e\u7dcf\u6570",
+      icon: TrendingUp,
+      color: "text-primary",
+      bgColor: "bg-primary/8",
+    },
+    {
+      label: "\u4eca\u6708\u306e\u751f\u6210\u6570",
+      value: stats?.thisMonthGenerated || 0,
+      description: "\u4eca\u6708\u751f\u6210\u3057\u305fPDF\u306e\u6570",
+      icon: CalendarDays,
+      color: "text-violet-500",
+      bgColor: "bg-violet-50",
+    },
+    {
+      label: "\u767b\u9332\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u6570",
+      value: stats?.templatesCount || 0,
+      description: "\u5229\u7528\u53ef\u80fd\u306a\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8",
+      icon: FileStack,
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-50",
+    },
+  ]
+
+  const quickActions = [
+    {
+      title: "PDF\u751f\u6210",
+      description: "\u4f1a\u793e\u60c5\u5831\u3092\u5165\u529b\u3057\u3066PDF\u3092\u751f\u6210",
+      icon: FileText,
+      href: "/generate",
+      buttonLabel: "\u65b0\u898f\u751f\u6210",
+      primary: true,
+    },
+    {
+      title: "\u4e00\u62ec\u751f\u6210",
+      description: "\u8907\u6570\u306e\u4f1a\u793e\u60c5\u5831\u3092\u4e00\u62ec\u3067PDF\u5316",
+      icon: Layers,
+      href: "/batch",
+      buttonLabel: "\u4e00\u62ec\u751f\u6210",
+      primary: false,
+    },
+    {
+      title: "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u7ba1\u7406",
+      description: "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306e\u30a2\u30c3\u30d7\u30ed\u30fc\u30c9\u30fb\u7ba1\u7406",
+      icon: FolderOpen,
+      href: "/templates",
+      buttonLabel: "\u7ba1\u7406\u3059\u308b",
+      primary: false,
+    },
+    {
+      title: "\u751f\u6210\u5c65\u6b74",
+      description: "\u904e\u53bb\u306b\u751f\u6210\u3057\u305fPDF\u3092\u78ba\u8a8d",
+      icon: Clock,
+      href: "/history",
+      buttonLabel: "\u5c65\u6b74\u3092\u898b\u308b",
+      primary: false,
+    },
+  ]
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
-        <p className="text-gray-500">
-          ようこそ、{session?.user?.name}さん
+        <h1 className="text-2xl font-bold text-foreground">
+          \u304a\u304b\u3048\u308a\u306a\u3055\u3044\u3001{session?.user?.name}\u3055\u3093
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          \u4eca\u65e5\u3082\u52b9\u7387\u7684\u306b\u66f8\u985e\u3092\u4f5c\u6210\u3057\u307e\u3057\u3087\u3046
         </p>
       </div>
 
-      {/* 統計カード */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>総生成数</CardDescription>
-            <CardTitle className="text-3xl">
-              {loading ? "..." : stats?.totalGenerated || 0}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-gray-500">これまでに生成したPDFの総数</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>今月の生成数</CardDescription>
-            <CardTitle className="text-3xl">
-              {loading ? "..." : stats?.thisMonthGenerated || 0}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-gray-500">今月生成したPDFの数</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>登録テンプレート数</CardDescription>
-            <CardTitle className="text-3xl">
-              {loading ? "..." : stats?.templatesCount || 0}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-gray-500">利用可能なテンプレート</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {statsCards.map((stat) => {
+          const Icon = stat.icon
+          return (
+            <Card key={stat.label} className="border-border/60 shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                    <p className="text-3xl font-bold mt-1 text-foreground">
+                      {loading ? "..." : stat.value}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+                  </div>
+                  <div className={`p-2.5 rounded-xl ${stat.bgColor}`}>
+                    <Icon className={`w-5 h-5 ${stat.color}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
-      {/* クイックアクション */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link href="/generate">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="text-lg">PDF生成</CardTitle>
-              <CardDescription>
-                会社情報を入力してPDFを生成
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full">新規生成</Button>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/batch">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="text-lg">一括生成</CardTitle>
-              <CardDescription>
-                複数の会社情報を一括でPDF化
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="outline">一括生成</Button>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/templates">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="text-lg">テンプレート管理</CardTitle>
-              <CardDescription>
-                テンプレートのアップロード・管理
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="outline">管理する</Button>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/history">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle className="text-lg">生成履歴</CardTitle>
-              <CardDescription>
-                過去に生成したPDFを確認
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="outline">履歴を見る</Button>
-            </CardContent>
-          </Card>
-        </Link>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {quickActions.map((action) => {
+          const Icon = action.icon
+          return (
+            <Link key={action.title} href={action.href}>
+              <Card className="group hover:shadow-md hover:border-primary/30 transition-all duration-200 cursor-pointer h-full border-border/60">
+                <CardContent className="pt-6 pb-5 flex flex-col h-full">
+                  <div className={`w-10 h-10 rounded-xl ${action.primary ? "bg-primary/10" : "bg-muted"} flex items-center justify-center mb-3`}>
+                    <Icon className={`w-5 h-5 ${action.primary ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
+                  <h3 className="font-semibold text-foreground">{action.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-1 flex-1">
+                    {action.description}
+                  </p>
+                  <div className="mt-4 flex items-center text-sm font-medium text-primary group-hover:gap-2 transition-all">
+                    {action.buttonLabel}
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          )
+        })}
       </div>
 
-      {/* 最近の生成履歴 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>最近の生成履歴</CardTitle>
-          <CardDescription>
-            直近5件の生成履歴
-          </CardDescription>
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-lg">\u6700\u8fd1\u306e\u751f\u6210\u5c65\u6b74</CardTitle>
+            <CardDescription>\u76f4\u8fd15\u4ef6\u306e\u751f\u6210\u5c65\u6b74</CardDescription>
+          </div>
+          {recentHistories.length > 0 && (
+            <Link href="/history">
+              <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                \u3059\u3079\u3066\u898b\u308b
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-center py-4 text-gray-500">読み込み中...</p>
+            <div className="flex items-center justify-center py-8">
+              <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <span className="ml-3 text-sm text-muted-foreground">\u8aad\u307f\u8fbc\u307f\u4e2d...</span>
+            </div>
           ) : recentHistories.length === 0 ? (
-            <p className="text-center py-4 text-gray-500">
-              まだ生成履歴がありません
-            </p>
+            <div className="text-center py-10">
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto mb-3">
+                <Clock className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground">\u307e\u3060\u751f\u6210\u5c65\u6b74\u304c\u3042\u308a\u307e\u305b\u3093</p>
+              <Link href="/generate">
+                <Button className="mt-4" size="sm">\u6700\u521d\u306ePDF\u3092\u751f\u6210\u3059\u308b</Button>
+              </Link>
+            </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>会社名</TableHead>
-                  <TableHead>テンプレート</TableHead>
-                  <TableHead>生成日時</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>\u4f1a\u793e\u540d</TableHead>
+                  <TableHead>\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8</TableHead>
+                  <TableHead>\u751f\u6210\u65e5\u6642</TableHead>
+                  <TableHead className="text-right">\u64cd\u4f5c</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recentHistories.map((history) => (
-                  <TableRow key={history.id}>
-                    <TableCell className="font-medium">
-                      {history.companyName}
+                  <TableRow key={history.id} className="hover:bg-accent/30">
+                    <TableCell className="font-medium">{history.companyName}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
+                        {history.templateName}
+                      </span>
                     </TableCell>
-                    <TableCell>{history.templateName}</TableCell>
-                    <TableCell>{formatDate(history.createdAt)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(history.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          handleDownload(history.pdfUrl, history.companyName)
-                        }
+                        variant="ghost"
+                        className="text-primary hover:text-primary/80 hover:bg-primary/8"
+                        onClick={() => handleDownload(history.pdfUrl, history.companyName)}
                       >
+                        <Download className="w-4 h-4 mr-1" />
                         DL
                       </Button>
                     </TableCell>
@@ -250,15 +290,6 @@ export default function DashboardPage() {
                 ))}
               </TableBody>
             </Table>
-          )}
-          {recentHistories.length > 0 && (
-            <div className="mt-4">
-              <Link href="/history">
-                <Button variant="ghost" className="w-full">
-                  すべての履歴を見る
-                </Button>
-              </Link>
-            </div>
           )}
         </CardContent>
       </Card>

@@ -99,8 +99,8 @@ export default function GeneratePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">PDF生成</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">PDF生成</h1>
+        <p className="text-muted-foreground">
           会社情報を入力してPDFを生成します
         </p>
       </div>
@@ -184,8 +184,8 @@ export default function GeneratePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-400">
+                <div className="h-[300px] border-2 border-dashed border-border rounded-lg flex items-center justify-center">
+                  <p className="text-muted-foreground">
                     会社情報を入力してプレビューまたは生成を実行してください
                   </p>
                 </div>

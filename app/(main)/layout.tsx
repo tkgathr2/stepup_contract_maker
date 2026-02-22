@@ -4,13 +4,24 @@ import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import {
+  LayoutDashboard,
+  FileText,
+  Layers,
+  FolderOpen,
+  Clock,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react"
+import { useState } from "react"
 
 const navigation = [
-  { name: "ダッシュボード", href: "/dashboard" },
-  { name: "PDF生成", href: "/generate" },
-  { name: "一括生成", href: "/batch" },
-  { name: "テンプレート管理", href: "/templates" },
-  { name: "生成履歴", href: "/history" },
+  { name: "ダッシュボード", href: "/dashboard", icon: LayoutDashboard },
+  { name: "PDF生成", href: "/generate", icon: FileText },
+  { name: "一括生成", href: "/batch", icon: Layers },
+  { name: "テンプレート管理", href: "/templates", icon: FolderOpen },
+  { name: "生成履歴", href: "/history", icon: Clock },
 ]
 
 export default function MainLayout({
@@ -20,87 +31,113 @@ export default function MainLayout({
 }) {
   const { data: session } = useSession()
   const pathname = usePathname()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/login" })
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <span className="text-lg font-bold text-gray-900">
-                  StepUp Contract Maker
+            <div className="flex items-center">
+              <Link href="/dashboard" className="flex items-center gap-2.5 group">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-4.5 h-4.5 text-primary" />
+                </div>
+                <span className="text-lg font-bold bg-gradient-to-r from-primary to-pink-400 bg-clip-text text-transparent">
+                  ラクラク契約くん
                 </span>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-4">
+              </Link>
+              <div className="hidden md:flex ml-8 space-x-1">
                 {navigation.map((item) => {
                   const isActive = pathname === item.href
+                  const Icon = item.icon
                   return (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`inline-flex items-center px-3 py-2 text-sm font-medium ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                         isActive
-                          ? "text-blue-600 border-b-2 border-blue-600"
-                          : "text-gray-500 hover:text-gray-700"
+                          ? "text-primary bg-primary/8"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       }`}
                     >
+                      <Icon className="w-4 h-4" />
                       {item.name}
                     </Link>
                   )
                 })}
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-3">
               {session?.user && (
                 <>
-                  <div className="flex items-center space-x-2">
+                  <div className="hidden sm:flex items-center gap-2">
                     {session.user.image && (
                       <img
                         src={session.user.image}
                         alt={session.user.name || ""}
-                        className="w-8 h-8 rounded-full"
+                        className="w-8 h-8 rounded-full ring-2 ring-primary/20"
                       />
                     )}
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm font-medium text-foreground">
                       {session.user.name}
                     </span>
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleSignOut}>
-                    ログアウト
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <LogOut className="w-4 h-4 mr-1.5" />
+                    <span className="hidden sm:inline">ログアウト</span>
                   </Button>
                 </>
               )}
+              <button
+                className="md:hidden p-2 rounded-lg hover:bg-muted"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-5 h-5 text-foreground" />
+                ) : (
+                  <Menu className="w-5 h-5 text-foreground" />
+                )}
+              </button>
             </div>
           </div>
         </div>
-        {/* Mobile navigation */}
-        <div className="sm:hidden border-t">
-          <div className="flex overflow-x-auto">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex-shrink-0 px-4 py-2 text-sm font-medium ${
-                    isActive
-                      ? "text-blue-600 border-b-2 border-blue-600"
-                      : "text-gray-500"
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              )
-            })}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border/60 bg-white/95 backdrop-blur-md">
+            <div className="px-4 py-3 space-y-1">
+              {navigation.map((item) => {
+                const isActive = pathname === item.href
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                      isActive
+                        ? "text-primary bg-primary/8"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.name}
+                  </Link>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </nav>
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {children}
       </main>
     </div>

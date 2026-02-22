@@ -79,7 +79,7 @@ export default function CompanyForm({
   }
 
   return (
-    <Card>
+    <Card className="border-border/60 shadow-sm">
       <CardHeader>
         <CardTitle>会社情報入力</CardTitle>
         <CardDescription>
@@ -103,7 +103,7 @@ export default function CompanyForm({
             {errors.companyName && (
               <p className="text-sm text-red-500">{errors.companyName}</p>
             )}
-            <p className="text-xs text-gray-500">{companyName.length}/100文字</p>
+            <p className="text-xs text-muted-foreground">{companyName.length}/100文字</p>
           </div>
 
           <div className="space-y-2">
@@ -121,7 +121,7 @@ export default function CompanyForm({
             {errors.address && (
               <p className="text-sm text-red-500">{errors.address}</p>
             )}
-            <p className="text-xs text-gray-500">{address.length}/500文字</p>
+            <p className="text-xs text-muted-foreground">{address.length}/500文字</p>
           </div>
 
           <div className="space-y-2">
@@ -139,7 +139,7 @@ export default function CompanyForm({
             {errors.representativeName && (
               <p className="text-sm text-red-500">{errors.representativeName}</p>
             )}
-            <p className="text-xs text-gray-500">{representativeName.length}/100文字</p>
+            <p className="text-xs text-muted-foreground">{representativeName.length}/100文字</p>
           </div>
 
           <div className="flex gap-2 pt-4">
