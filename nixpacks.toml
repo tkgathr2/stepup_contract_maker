@@ -1,23 +1,9 @@
 [phases.setup]
 nixPkgs = ["nodejs_20"]
+nixLibs = ["nspr", "nss", "alsa-lib", "mesa", "pango", "cairo", "cups", "libdrm", "libxkbcommon", "at-spi2-atk", "glib", "gtk3", "dbus", "expat", "xorg.libX11", "xorg.libxcb", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libXtst", "xorg.libXi", "xorg.libXcursor", "xorg.libXss"]
 aptPkgs = [
-  "libnss3",
-  "libatk-bridge2.0-0",
-  "libdrm2",
-  "libxkbcommon0",
-  "libgbm1",
-  "libasound2",
-  "libpango-1.0-0",
-  "libcairo2",
-  "libcups2",
-  "libxrandr2",
-  "libxdamage1",
-  "libxcomposite1",
   "fonts-noto-cjk",
-  "fonts-liberation",
-  "libnspr4",
-  "libx11-xcb1",
-  "libxtst6"
+  "fonts-liberation"
 ]
 
 [phases.install]
