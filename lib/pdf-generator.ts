@@ -4,6 +4,29 @@ import puppeteer from "puppeteer"
 import mammoth from "mammoth"
 import { v4 as uuidv4 } from "uuid"
 
+// Railway/Nixpacks環境ではシステムのChromiumを使用
+function getPuppeteerLaunchOptions() {
+  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+    || process.env.CHROMIUM_PATH
+    || (() => {
+      const candidates = [
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+      ]
+      for (const p of candidates) {
+        if (fs.existsSync(p)) return p
+      }
+      return undefined
+    })()
+
+  return {
+    headless: true as const,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    ...(executablePath ? { executablePath } : {}),
+  }
+}
+
 const GENERATED_DIR = path.join(process.cwd(), "public", "generated")
 
 /**
@@ -31,10 +54,7 @@ export async function generatePDF(
   const htmlContent = result.value
 
   // HTMLをPDFに変換
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  })
+  const browser = await puppeteer.launch(getPuppeteerLaunchOptions())
 
   try {
     const page = await browser.newPage()
@@ -113,10 +133,7 @@ export async function generatePDFPreview(docxBuffer: Buffer): Promise<string> {
   const result = await mammoth.convertToHtml({ buffer: docxBuffer })
   const htmlContent = result.value
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  })
+  const browser = await puppeteer.launch(getPuppeteerLaunchOptions())
 
   try {
     const page = await browser.newPage()
