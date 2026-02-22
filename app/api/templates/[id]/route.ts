@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { logAction, logError } from "@/lib/logger"
+import { logAction } from "@/lib/logger"
 import * as fs from "fs"
 import * as path from "path"
+import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
 
 const TEMPLATES_DIR = path.join(process.cwd(), "templates")
 
@@ -17,10 +18,7 @@ export async function GET(
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      )
+      return sendError(401, ErrorCode.UNAUTHORIZED, "認証が必要です")
     }
 
     const { id } = await params
@@ -30,19 +28,12 @@ export async function GET(
     })
 
     if (!template) {
-      return NextResponse.json(
-        { error: "テンプレートが見つかりません" },
-        { status: 404 }
-      )
+      return sendError(404, ErrorCode.NOT_FOUND, "テンプレートが見つかりません")
     }
 
     return NextResponse.json({ template })
   } catch (error) {
-    console.error("Error fetching template:", error)
-    return NextResponse.json(
-      { error: "テンプレートの取得に失敗しました" },
-      { status: 500 }
-    )
+    return handleInternalError(error, "templates/[id]/GET")
   }
 }
 
@@ -55,10 +46,7 @@ export async function PUT(
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      )
+      return sendError(401, ErrorCode.UNAUTHORIZED, "認証が必要です")
     }
 
     const { id } = await params
@@ -70,25 +58,22 @@ export async function PUT(
     })
 
     if (!existingTemplate) {
-      return NextResponse.json(
-        { error: "テンプレートが見つかりません" },
-        { status: 404 }
-      )
+      return sendError(404, ErrorCode.NOT_FOUND, "テンプレートが見つかりません")
     }
 
     // バリデーション
     if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
-      return NextResponse.json(
-        { error: "テンプレート名が無効です" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "name",
+        reason: "invalid",
+      })
     }
 
     if (type !== undefined && type !== "contract" && type !== "invoice") {
-      return NextResponse.json(
-        { error: "タイプは 'contract' または 'invoice' である必要があります" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "type",
+        reason: "invalid",
+      })
     }
 
     const updatedTemplate = await db.template.update({
@@ -112,20 +97,7 @@ export async function PUT(
       template: updatedTemplate,
     })
   } catch (error) {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.id) {
-      logError(
-        session.user.id,
-        session.user.email || "unknown",
-        session.user.name || "unknown",
-        error as Error
-      )
-    }
-    console.error("Error updating template:", error)
-    return NextResponse.json(
-      { error: "テンプレートの更新に失敗しました" },
-      { status: 500 }
-    )
+    return handleInternalError(error, "templates/[id]/PUT")
   }
 }
 
@@ -182,19 +154,6 @@ export async function DELETE(
       message: "テンプレートを削除しました",
     })
   } catch (error) {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.id) {
-      logError(
-        session.user.id,
-        session.user.email || "unknown",
-        session.user.name || "unknown",
-        error as Error
-      )
-    }
-    console.error("Error deleting template:", error)
-    return NextResponse.json(
-      { error: "テンプレートの削除に失敗しました" },
-      { status: 500 }
-    )
+    return handleInternalError(error, "templates/[id]/DELETE")
   }
 }

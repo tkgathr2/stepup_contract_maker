@@ -92,7 +92,7 @@ export default function TemplatesPage() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || "Upload failed")
+        throw new Error(data.message || "アップロードに失敗しました")
       }
 
       toast.success("テンプレートをアップロードしました")
@@ -118,7 +118,7 @@ export default function TemplatesPage() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || "Delete failed")
+        throw new Error(data.message || "削除に失敗しました")
       }
 
       toast.success("テンプレートを削除しました")
