@@ -9,24 +9,40 @@ export interface TemplateData {
   representativeName: string
 }
 
+/** DB から取得したテンプレート行 */
+export interface TemplateRecord {
+  filePath: string
+  fileData?: Buffer | null
+}
+
+/**
+ * テンプレートの .docx バイナリを取得する
+ * 1. DB に fileData があればそれを使う（エフェメラルFS対策）
+ * 2. なければファイルシステムから読み込む
+ */
+function loadTemplateContent(template: TemplateRecord): string {
+  if (template.fileData && template.fileData.length > 0) {
+    return template.fileData.toString("binary")
+  }
+
+  const absolutePath = path.join(process.cwd(), template.filePath.replace(/^\//, ""))
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`テンプレートファイルが見つかりません: ${template.filePath}`)
+  }
+  return fs.readFileSync(absolutePath, "binary")
+}
+
 /**
  * Wordテンプレートにデータを埋め込む
- * @param templatePath テンプレートファイルのパス
+ * @param template DB テンプレート行（filePath + fileData）
  * @param data 埋め込むデータ
  * @returns 埋め込み後のWordファイルのBuffer
  */
 export async function processTemplate(
-  templatePath: string,
+  template: TemplateRecord,
   data: TemplateData
 ): Promise<Buffer> {
-  // テンプレートファイルを読み込む
-  const absolutePath = path.join(process.cwd(), templatePath.replace(/^\//, ""))
-
-  if (!fs.existsSync(absolutePath)) {
-    throw new Error(`テンプレートファイルが見つかりません: ${templatePath}`)
-  }
-
-  const content = fs.readFileSync(absolutePath, "binary")
+  const content = loadTemplateContent(template)
   const zip = new PizZip(content)
 
   const doc = new Docxtemplater(zip, {
@@ -34,14 +50,12 @@ export async function processTemplate(
     linebreaks: true,
   })
 
-  // データを埋め込む
   doc.render({
     companyName: data.companyName,
     address: data.address,
     representativeName: data.representativeName,
   })
 
-  // 結果をBufferとして取得
   const buf = doc.getZip().generate({
     type: "nodebuffer",
     compression: "DEFLATE",
@@ -52,26 +66,17 @@ export async function processTemplate(
 
 /**
  * テンプレートファイルのプレースホルダーを検証する
- * @param templatePath テンプレートファイルのパス
- * @returns プレースホルダーが正しいかどうか
  */
-export async function validateTemplate(templatePath: string): Promise<{
+export async function validateTemplate(template: TemplateRecord): Promise<{
   valid: boolean
   errors: string[]
 }> {
   const errors: string[] = []
 
   try {
-    const absolutePath = path.join(process.cwd(), templatePath.replace(/^\//, ""))
-
-    if (!fs.existsSync(absolutePath)) {
-      return { valid: false, errors: ["テンプレートファイルが見つかりません"] }
-    }
-
-    const content = fs.readFileSync(absolutePath, "binary")
+    const content = loadTemplateContent(template)
     const zip = new PizZip(content)
 
-    // テストデータで検証
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
       linebreaks: true,

@@ -29,20 +29,21 @@ export async function GET(request: NextRequest) {
     const validatedLimit = Math.min(100, Math.max(1, limit))
     const skip = (validatedPage - 1) * validatedLimit
 
-    // 検索条件の構築
-    const where: {
-      userId: string
-      companyName?: { contains: string }
-      createdAt?: { gte?: Date; lte?: Date }
-    } = {
-      userId,
-    }
-
-    if (search) {
-      where.companyName = {
-        contains: search,
+      // 検索条件の構築
+      const where: {
+        userId: string
+        companyName?: { contains: string; mode: "insensitive" }
+        createdAt?: { gte?: Date; lte?: Date }
+      } = {
+        userId,
       }
-    }
+
+      if (search) {
+        where.companyName = {
+          contains: search,
+          mode: "insensitive",
+        }
+      }
 
     if (from || to) {
       where.createdAt = {}

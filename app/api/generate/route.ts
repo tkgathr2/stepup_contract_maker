@@ -4,9 +4,8 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { logAction, logError } from "@/lib/logger"
 import { processTemplate } from "@/lib/template-processor"
-import { generatePDF, generatePDFPreview } from "@/lib/pdf-generator"
-import { v4 as uuidv4 } from "uuid"
-import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
+import { generatePDFBuffer, generatePDFPreview } from "@/lib/pdf-generator"
+import { ErrorCode, sendError, handleInternalError, captureInternalError } from "@/lib/api-error"
 
 // PDF生成
 export async function POST(request: NextRequest) {
@@ -87,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     // テンプレートにデータを埋め込む
     logAction(userId, email, name, "テンプレート読み込み", "開始")
-    const docxBuffer = await processTemplate(template.filePath, {
+    const docxBuffer = await processTemplate(template, {
       companyName,
       address,
       representativeName,
@@ -107,11 +106,10 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // PDFを生成
-    const fileId = uuidv4()
-    const { pdfUrl } = await generatePDF(docxBuffer, fileId)
+    // PDFを生成（バッファとしてDBに保存）
+    const pdfBuffer = await generatePDFBuffer(docxBuffer)
 
-    // 履歴を保存
+    // 履歴を保存（PDF実体をDBに格納）
     const history = await db.generationHistory.create({
       data: {
         userId,
@@ -119,8 +117,15 @@ export async function POST(request: NextRequest) {
         companyName,
         address,
         representativeName,
-        pdfPath: pdfUrl,
+        pdfPath: `/api/pdf/PLACEHOLDER`,
+        pdfData: pdfBuffer,
       },
+    })
+
+    // pdfPath を正しい API URL に更新
+    await db.generationHistory.update({
+      where: { id: history.id },
+      data: { pdfPath: `/api/pdf/${history.id}` },
     })
 
     logAction(
@@ -133,11 +138,22 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      pdfUrl,
+      pdfUrl: `/api/pdf/${history.id}`,
       historyId: history.id,
     })
   } catch (error) {
     logError(userId, email, name, error as Error)
+
+    // ユーザーが対処可能なエラーは具体的なメッセージを返す
+    const msg = (error as Error).message || ""
+    if (msg.includes("テンプレートファイルが見つかりません")) {
+      captureInternalError(error, "generate")
+      return sendError(500, ErrorCode.INTERNAL_ERROR, "テンプレートファイルが見つかりません。再アップロードしてください。")
+    }
+    if (msg.includes("Chromium") || msg.includes("chromium") || msg.includes("Failed to launch")) {
+      captureInternalError(error, "generate")
+      return sendError(500, ErrorCode.INTERNAL_ERROR, "PDF変換エンジンが利用できません。管理者にお問い合わせください。")
+    }
     return handleInternalError(error, "generate")
   }
 }

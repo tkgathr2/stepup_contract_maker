@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import BatchForm, { CompanyData } from "@/components/forms/BatchForm"
@@ -16,6 +16,7 @@ interface GeneratedPDF {
 export default function BatchPage() {
   const [templateId, setTemplateId] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const submittingRef = useRef(false)
   const [generatedPdfs, setGeneratedPdfs] = useState<GeneratedPDF[]>([])
   const [failedCount, setFailedCount] = useState(0)
 
@@ -24,6 +25,9 @@ export default function BatchPage() {
       toast.error("テンプレートを選択してください")
       return
     }
+
+    if (submittingRef.current) return
+    submittingRef.current = true
 
     setIsLoading(true)
     setGeneratedPdfs([])
@@ -59,10 +63,11 @@ export default function BatchPage() {
       toast.error(error instanceof Error ? error.message : "エラーが発生しました")
     } finally {
       setIsLoading(false)
+      submittingRef.current = false
     }
   }
 
-  const handleDownload = (pdfUrl: string, companyName: string) => {
+  const handleDownload= (pdfUrl: string, companyName: string) => {
     const link = document.createElement("a")
     link.href = pdfUrl
     link.download = `${companyName}.pdf`
