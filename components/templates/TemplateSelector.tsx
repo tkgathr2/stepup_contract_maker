@@ -81,7 +81,7 @@ export default function TemplateSelector({
         </SelectContent>
       </Select>
       {templates.length === 0 && !loading && (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           テンプレートがありません。テンプレート管理ページからアップロードしてください。
         </p>
       )}

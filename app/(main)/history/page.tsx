@@ -93,8 +93,8 @@ export default function HistoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">生成履歴</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">生成履歴</h1>
+        <p className="text-muted-foreground">
           過去に生成したPDFの一覧
         </p>
       </div>
@@ -142,9 +142,9 @@ export default function HistoryPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-center py-8 text-gray-500">読み込み中...</p>
+            <p className="text-center py-8 text-muted-foreground">読み込み中...</p>
           ) : histories.length === 0 ? (
-            <p className="text-center py-8 text-gray-500">
+            <p className="text-center py-8 text-muted-foreground">
               {search ? "検索結果がありません" : "履歴がありません"}
             </p>
           ) : (
@@ -169,7 +169,7 @@ export default function HistoryPage() {
                         <TableCell>{history.representativeName}</TableCell>
                         <TableCell>
                           {history.templateName}
-                          <span className="text-xs text-gray-500 ml-1">
+                          <span className="text-xs text-muted-foreground ml-1">
                             ({getTypeLabel(history.templateType)})
                           </span>
                         </TableCell>
@@ -200,7 +200,7 @@ export default function HistoryPage() {
                   >
                     前へ
                   </Button>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-muted-foreground">
                     {page} / {totalPages}
                   </span>
                   <Button

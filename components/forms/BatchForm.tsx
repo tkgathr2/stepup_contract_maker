@@ -114,10 +114,10 @@ export default function BatchForm({ onSubmit, isLoading = false }: BatchFormProp
           {companies.map((company, index) => (
             <div
               key={company.id}
-              className="border rounded-lg p-4 space-y-4 relative"
+              className="border border-border/60 rounded-xl p-4 space-y-4 relative bg-card shadow-sm"
             >
               <div className="flex justify-between items-center">
-                <span className="font-medium text-sm text-gray-700">
+                <span className="font-medium text-sm text-muted-foreground">
                   会社 {index + 1}
                 </span>
                 {companies.length > 1 && (
