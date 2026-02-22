@@ -59,7 +59,7 @@ export default function TemplatesPage() {
       if (!response.ok) throw new Error("Failed to fetch templates")
       const data = await response.json()
       setTemplates(data.templates)
-    } catch (error) {
+    } catch {
       toast.error("テンプレートの取得に失敗しました")
     } finally {
       setLoading(false)
@@ -92,7 +92,7 @@ export default function TemplatesPage() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || "Upload failed")
+        throw new Error(data.message || "Upload failed")
       }
 
       toast.success("テンプレートをアップロードしました")
@@ -118,7 +118,7 @@ export default function TemplatesPage() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || "Delete failed")
+        throw new Error(data.message || "Delete failed")
       }
 
       toast.success("テンプレートを削除しました")

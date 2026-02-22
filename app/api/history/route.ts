@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { logAction } from "@/lib/logger"
+import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
 
 // 履歴一覧取得
 export async function GET(request: NextRequest) {
@@ -10,10 +11,7 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      )
+      return sendError(401, ErrorCode.UNAUTHORIZED, "認証が必要です")
     }
 
     const userId = session.user.id
@@ -105,10 +103,6 @@ export async function GET(request: NextRequest) {
       limit: validatedLimit,
     })
   } catch (error) {
-    console.error("Error fetching history:", error)
-    return NextResponse.json(
-      { error: "履歴の取得に失敗しました" },
-      { status: 500 }
-    )
+    return handleInternalError(error, "履歴取得")
   }
 }

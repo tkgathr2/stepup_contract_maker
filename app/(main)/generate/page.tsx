@@ -38,7 +38,7 @@ export default function GeneratePage() {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || "PDF生成に失敗しました")
+        throw new Error(result.message || "PDF生成に失敗しました")
       }
 
       setPdfUrl(result.pdfUrl)
@@ -75,7 +75,7 @@ export default function GeneratePage() {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || "プレビュー生成に失敗しました")
+        throw new Error(result.message || "プレビュー生成に失敗しました")
       }
 
       setPreviewPdf(result.pdfBase64)

@@ -38,7 +38,7 @@ export function logAction(
     ensureLogDir()
     fs.appendFileSync(LOG_FILE, logMessage, "utf8")
   } catch (error) {
-    console.error("Failed to write log:", error)
+    console.error("[RAKURAKU]", "logger:write_log", error)
   }
 
   // 開発環境ではコンソールにも出力
@@ -67,12 +67,12 @@ export function logError(
     ensureLogDir()
     fs.appendFileSync(LOG_FILE, logMessage, "utf8")
   } catch (writeError) {
-    console.error("Failed to write error log:", writeError)
+    console.error("[RAKURAKU]", "logger:write_error_log", writeError)
   }
 
   // 開発環境ではコンソールにも出力
   if (process.env.NODE_ENV !== "production") {
-    console.error(logMessage.trim())
+    console.error("[RAKURAKU]", "logger:error", logMessage.trim())
   }
 }
 
@@ -99,7 +99,7 @@ export function logAuth(
     ensureLogDir()
     fs.appendFileSync(LOG_FILE, logMessage, "utf8")
   } catch (error) {
-    console.error("Failed to write auth log:", error)
+    console.error("[RAKURAKU]", "logger:write_auth_log", error)
   }
 
   if (process.env.NODE_ENV !== "production") {
@@ -123,12 +123,12 @@ export function logSystem(
     ensureLogDir()
     fs.appendFileSync(LOG_FILE, logMessage, "utf8")
   } catch (error) {
-    console.error("Failed to write system log:", error)
+    console.error("[RAKURAKU]", "logger:write_system_log", error)
   }
 
   if (process.env.NODE_ENV !== "production") {
     if (level === "ERROR") {
-      console.error(logMessage.trim())
+      console.error("[RAKURAKU]", "logger:system_error", logMessage.trim())
     } else if (level === "WARN") {
       console.warn(logMessage.trim())
     } else {

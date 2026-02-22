@@ -44,7 +44,7 @@ export default function BatchPage() {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || "一括生成に失敗しました")
+        throw new Error(result.message || "一括生成に失敗しました")
       }
 
       setGeneratedPdfs(result.pdfs)

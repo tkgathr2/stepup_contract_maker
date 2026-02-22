@@ -40,13 +40,13 @@ export const authOptions: NextAuthOptions = {
           }
           return true
         } catch (error) {
-          console.error("Error during sign in:", error)
+          console.error("[RAKURAKU]", "signIn", error)
           return false
         }
       }
       return true
     },
-    async session({ session, token }) {
+    async session({ session, token: _token }) {
       if (session.user) {
         // データベースからユーザー情報を取得してセッションに追加
         const dbUser = await db.user.findUnique({

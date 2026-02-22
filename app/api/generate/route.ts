@@ -6,16 +6,14 @@ import { logAction, logError } from "@/lib/logger"
 import { processTemplate } from "@/lib/template-processor"
 import { generatePDF, generatePDFPreview } from "@/lib/pdf-generator"
 import { v4 as uuidv4 } from "uuid"
+import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
 
 // PDF生成
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "認証が必要です" },
-      { status: 401 }
-    )
+    return sendError(401, ErrorCode.UNAUTHORIZED, "認証が必要です")
   }
 
   const userId = session.user.id
@@ -28,49 +26,28 @@ export async function POST(request: NextRequest) {
 
     // バリデーション
     if (!companyName || typeof companyName !== "string") {
-      return NextResponse.json(
-        { error: "会社名は必須です" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "会社名は必須です")
     }
     if (companyName.length > 100) {
-      return NextResponse.json(
-        { error: "会社名は100文字以内で入力してください" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "会社名は100文字以内で入力してください")
     }
 
     if (!address || typeof address !== "string") {
-      return NextResponse.json(
-        { error: "住所は必須です" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "住所は必須です")
     }
     if (address.length > 500) {
-      return NextResponse.json(
-        { error: "住所は500文字以内で入力してください" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "住所は500文字以内で入力してください")
     }
 
     if (!representativeName || typeof representativeName !== "string") {
-      return NextResponse.json(
-        { error: "代表者名は必須です" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "代表者名は必須です")
     }
     if (representativeName.length > 100) {
-      return NextResponse.json(
-        { error: "代表者名は100文字以内で入力してください" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "代表者名は100文字以内で入力してください")
     }
 
     if (!templateId || typeof templateId !== "string") {
-      return NextResponse.json(
-        { error: "テンプレートを選択してください" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "テンプレートを選択してください")
     }
 
     // テンプレートを取得
@@ -79,10 +56,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!template) {
-      return NextResponse.json(
-        { error: "テンプレートが見つかりません" },
-        { status: 404 }
-      )
+      return sendError(404, ErrorCode.NOT_FOUND, "テンプレートが見つかりません")
     }
 
     logAction(userId, email, name, "PDF生成", "開始")
@@ -140,10 +114,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     logError(userId, email, name, error as Error)
-    console.error("Error generating PDF:", error)
-    return NextResponse.json(
-      { error: "PDFの生成に失敗しました" },
-      { status: 500 }
-    )
+    return handleInternalError(error, "PDF生成")
   }
 }

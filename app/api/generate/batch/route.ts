@@ -6,6 +6,7 @@ import { logAction, logError } from "@/lib/logger"
 import { processTemplate } from "@/lib/template-processor"
 import { generatePDF } from "@/lib/pdf-generator"
 import { v4 as uuidv4 } from "uuid"
+import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
 
 interface CompanyData {
   companyName: string
@@ -24,10 +25,7 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: "認証が必要です" },
-      { status: 401 }
-    )
+    return sendError(401, ErrorCode.UNAUTHORIZED, "認証が必要です")
   }
 
   const userId = session.user.id
@@ -43,39 +41,24 @@ export async function POST(request: NextRequest) {
 
     // バリデーション
     if (!templateId || typeof templateId !== "string") {
-      return NextResponse.json(
-        { error: "テンプレートを選択してください" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "テンプレートを選択してください")
     }
 
     if (!Array.isArray(companies) || companies.length === 0) {
-      return NextResponse.json(
-        { error: "会社情報を1件以上入力してください" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "会社情報を1件以上入力してください")
     }
 
     // 各会社情報のバリデーション
     for (let i = 0; i < companies.length; i++) {
       const company = companies[i]
       if (!company.companyName || company.companyName.length > 100) {
-        return NextResponse.json(
-          { error: `${i + 1}番目の会社名が不正です` },
-          { status: 400 }
-        )
+        return sendError(400, ErrorCode.INVALID_PAYLOAD, `${i + 1}番目の会社名が不正です`)
       }
       if (!company.address || company.address.length > 500) {
-        return NextResponse.json(
-          { error: `${i + 1}番目の住所が不正です` },
-          { status: 400 }
-        )
+        return sendError(400, ErrorCode.INVALID_PAYLOAD, `${i + 1}番目の住所が不正です`)
       }
       if (!company.representativeName || company.representativeName.length > 100) {
-        return NextResponse.json(
-          { error: `${i + 1}番目の代表者名が不正です` },
-          { status: 400 }
-        )
+        return sendError(400, ErrorCode.INVALID_PAYLOAD, `${i + 1}番目の代表者名が不正です`)
       }
     }
 
@@ -85,10 +68,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!template) {
-      return NextResponse.json(
-        { error: "テンプレートが見つかりません" },
-        { status: 404 }
-      )
+      return sendError(404, ErrorCode.NOT_FOUND, "テンプレートが見つかりません")
     }
 
     logAction(
@@ -188,10 +168,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     logError(userId, email, name, error as Error)
-    console.error("Error generating batch PDFs:", error)
-    return NextResponse.json(
-      { error: "一括PDF生成に失敗しました" },
-      { status: 500 }
-    )
+    return handleInternalError(error, "一括PDF生成")
   }
 }

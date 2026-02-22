@@ -33,7 +33,7 @@ export default function MainLayout({
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
                 <span className="text-lg font-bold text-gray-900">
-                  StepUp Contract Maker
+                  ラクラク契約くん
                 </span>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-4">

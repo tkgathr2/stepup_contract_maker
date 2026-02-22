@@ -50,7 +50,7 @@ export default function HistoryPage() {
       const data = await response.json()
       setHistories(data.histories)
       setTotal(data.total)
-    } catch (error) {
+    } catch {
       toast.error("履歴の取得に失敗しました")
     } finally {
       setLoading(false)

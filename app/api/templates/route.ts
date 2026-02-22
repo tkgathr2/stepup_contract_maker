@@ -6,6 +6,7 @@ import { logAction, logError } from "@/lib/logger"
 import * as fs from "fs"
 import * as path from "path"
 import { v4 as uuidv4 } from "uuid"
+import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
 
 const TEMPLATES_DIR = path.join(process.cwd(), "templates")
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -16,10 +17,7 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      )
+      return sendError(401, ErrorCode.UNAUTHORIZED, "認証が必要です")
     }
 
     const { searchParams } = new URL(request.url)
@@ -40,11 +38,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ templates })
   } catch (error) {
-    console.error("Error fetching templates:", error)
-    return NextResponse.json(
-      { error: "テンプレートの取得に失敗しました" },
-      { status: 500 }
-    )
+    return handleInternalError(error, "テンプレート一覧取得")
   }
 }
 
@@ -54,10 +48,7 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      )
+      return sendError(401, ErrorCode.UNAUTHORIZED, "認証が必要です")
     }
 
     const formData = await request.formData()
@@ -67,39 +58,24 @@ export async function POST(request: NextRequest) {
 
     // バリデーション
     if (!file) {
-      return NextResponse.json(
-        { error: "ファイルが必要です" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "ファイルが必要です")
     }
 
     if (!name || name.trim() === "") {
-      return NextResponse.json(
-        { error: "テンプレート名が必要です" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "テンプレート名が必要です")
     }
 
     if (!type || (type !== "contract" && type !== "invoice")) {
-      return NextResponse.json(
-        { error: "タイプは 'contract' または 'invoice' である必要があります" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "タイプは 'contract' または 'invoice' である必要があります")
     }
 
     // ファイル検証
     if (!file.name.endsWith(".docx")) {
-      return NextResponse.json(
-        { error: "Word形式（.docx）のファイルのみアップロード可能です" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "Word形式（.docx）のファイルのみアップロード可能です")
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "ファイルサイズは10MB以下である必要があります" },
-        { status: 400 }
-      )
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "ファイルサイズは10MB以下である必要があります")
     }
 
     // テンプレートディレクトリが存在しない場合は作成
@@ -148,10 +124,6 @@ export async function POST(request: NextRequest) {
         error as Error
       )
     }
-    console.error("Error uploading template:", error)
-    return NextResponse.json(
-      { error: "テンプレートのアップロードに失敗しました" },
-      { status: 500 }
-    )
+    return handleInternalError(error, "テンプレートアップロード")
   }
 }
