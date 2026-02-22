@@ -4,6 +4,7 @@ import { createHmac } from "crypto"
 // セッションブリッジ受信: 旧ドメインから転送されたセッショントークンを
 // rakurakuドメインのCookieとして設定するエンドポイント
 
+const PRIMARY_DOMAIN = "rakuraku.up.railway.app"
 const MAX_AGE_SECONDS = 60 // 署名の有効期限（60秒）
 
 function verifyToken(
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
   const secret = process.env.NEXTAUTH_SECRET
 
   if (!encoded || !secret) {
-    return NextResponse.redirect(new URL("/login", req.url))
+    return NextResponse.redirect(`https://${PRIMARY_DOMAIN}/login`)
   }
 
   const signed = decodeURIComponent(encoded)
@@ -46,14 +47,14 @@ export async function GET(req: NextRequest) {
 
   if (!sessionToken) {
     // 無効なトークン → ログインページへ
-    return NextResponse.redirect(new URL("/login", req.url))
+    return NextResponse.redirect(`https://${PRIMARY_DOMAIN}/login`)
   }
 
   // rakurakuドメインにセッションCookieを設定してリダイレクト
-  const response = NextResponse.redirect(new URL(dest, req.url))
+  const response = NextResponse.redirect(`https://${PRIMARY_DOMAIN}${dest}`)
 
   // NextAuthと同じCookie設定（HTTPS環境用）
-  const isSecure = req.url.startsWith("https")
+  const isSecure = true
   const cookieName = isSecure
     ? "__Secure-next-auth.session-token"
     : "next-auth.session-token"

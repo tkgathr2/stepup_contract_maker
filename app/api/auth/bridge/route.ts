@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const secret = process.env.NEXTAUTH_SECRET
 
   if (!secret) {
-    return NextResponse.redirect(new URL("/login", req.url))
+    return NextResponse.redirect(`https://${PRIMARY_DOMAIN}/login`)
   }
 
   // NextAuthのセッションCookieを読み取る（HTTPS環境）
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   if (!sessionToken) {
     // セッションが無い場合はログインページへ
-    return NextResponse.redirect(new URL("/login", req.url))
+    return NextResponse.redirect(`https://${PRIMARY_DOMAIN}/login`)
   }
 
   // トークンに署名してrakurakuドメインへ転送
