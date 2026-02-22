@@ -5,7 +5,7 @@ import { FileText } from "lucide-react"
 
 export default function LoginPage() {
   const handleGoogleSignIn = () => {
-    signIn("google", { callbackUrl: "/api/auth/bridge?dest=/dashboard" })
+    signIn("google", { callbackUrl: "/dashboard" })
   }
 
   return (
