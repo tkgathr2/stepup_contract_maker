@@ -4,8 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { logAction, logError } from "@/lib/logger"
 import { processTemplate } from "@/lib/template-processor"
-import { generatePDF } from "@/lib/pdf-generator"
-import { v4 as uuidv4 } from "uuid"
+import { generatePDFBuffer } from "@/lib/pdf-generator"
 import { ErrorCode, sendError, handleInternalError, captureInternalError } from "@/lib/api-error"
 
 interface CompanyData {
@@ -94,21 +93,23 @@ export async function POST(request: NextRequest) {
       `開始 - ${companies.length}件`
     )
 
-    // 各会社に対してPDFを生成（並列処理）
-    const generatePromises = companies.map(async (company, index) => {
+    // 各会社に対してPDFを生成（直列処理：Chromiumリソース節約）
+    const results: { success: boolean; pdfUrl?: string; companyName: string; historyId?: string; error?: string }[] = []
+
+    for (let index = 0; index < companies.length; index++) {
+      const company = companies[index]
       try {
         // テンプレートにデータを埋め込む
-        const docxBuffer = await processTemplate(template.filePath, {
+        const docxBuffer = await processTemplate(template, {
           companyName: company.companyName,
           address: company.address,
           representativeName: company.representativeName,
         })
 
-        // PDFを生成
-        const fileId = uuidv4()
-        const { pdfUrl } = await generatePDF(docxBuffer, fileId)
+        // PDFを生成（バッファとしてDBに保存）
+        const pdfBuffer = await generatePDFBuffer(docxBuffer)
 
-        // 履歴を保存
+        // 履歴を保存（PDF実体をDBに格納）
         const history = await db.generationHistory.create({
           data: {
             userId,
@@ -116,8 +117,14 @@ export async function POST(request: NextRequest) {
             companyName: company.companyName,
             address: company.address,
             representativeName: company.representativeName,
-            pdfPath: pdfUrl,
+            pdfPath: `/api/pdf/PLACEHOLDER`,
+            pdfData: pdfBuffer,
           },
+        })
+
+        await db.generationHistory.update({
+          where: { id: history.id },
+          data: { pdfPath: `/api/pdf/${history.id}` },
         })
 
         logAction(
@@ -128,24 +135,22 @@ export async function POST(request: NextRequest) {
           `成功 (${index + 1}/${companies.length}) - 会社名: ${company.companyName}`
         )
 
-        return {
+        results.push({
           success: true,
-          pdfUrl,
+          pdfUrl: `/api/pdf/${history.id}`,
           companyName: company.companyName,
           historyId: history.id,
-        }
+        })
       } catch (error) {
         logError(userId, email, name, error as Error)
         captureInternalError(error, "generate/batch:item")
-        return {
+        results.push({
           success: false,
           companyName: company.companyName,
           error: (error as Error).message,
-        }
+        })
       }
-    })
-
-    const results = await Promise.all(generatePromises)
+    }
 
     // 成功したものだけを抽出
     const successfulPdfs: GeneratedPDF[] = results

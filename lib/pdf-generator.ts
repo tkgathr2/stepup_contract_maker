@@ -1,212 +1,86 @@
 import * as fs from "fs"
-import * as path from "path"
-import puppeteer from "puppeteer"
+import puppeteer from "puppeteer-core"
 import mammoth from "mammoth"
-import { v4 as uuidv4 } from "uuid"
 
-// Railway/Nixpacks環境ではシステムのChromiumを使用
+// puppeteer-core はブラウザを同梱しないため、システムの Chromium パスを必ず指定する
+function getChromiumPath(): string {
+  const envPath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROMIUM_PATH
+  if (envPath && fs.existsSync(envPath)) return envPath
+
+  const candidates = [
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+  ]
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p
+  }
+  throw new Error(
+    "Chromium が見つかりません。PUPPETEER_EXECUTABLE_PATH 環境変数を設定するか、システムに Chromium をインストールしてください。"
+  )
+}
+
 function getPuppeteerLaunchOptions() {
-  const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
-    || process.env.CHROMIUM_PATH
-    || (() => {
-      const candidates = [
-        "/usr/bin/chromium",
-        "/usr/bin/chromium-browser",
-        "/usr/bin/google-chrome",
-      ]
-      for (const p of candidates) {
-        if (fs.existsSync(p)) return p
-      }
-      return undefined
-    })()
-
   return {
     headless: true as const,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    ...(executablePath ? { executablePath } : {}),
+    executablePath: getChromiumPath(),
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--font-render-hinting=none",
+    ],
   }
 }
 
-const GENERATED_DIR = path.join(process.cwd(), "public", "generated")
+const PDF_STYLE = `
+  @page { size: A4; margin: 20mm; }
+  body {
+    font-family: "Noto Sans CJK JP", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+    font-size: 12pt; line-height: 1.6; color: #333;
+  }
+  h1, h2, h3 { color: #222; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 8px; }
+  p { margin: 0.5em 0; }
+`
+
+function buildHtml(htmlContent: string): string {
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><style>${PDF_STYLE}</style></head>
+<body>${htmlContent}</body>
+</html>`
+}
 
 /**
- * WordファイルのBufferをPDFに変換する
- * @param docxBuffer WordファイルのBuffer
- * @param fileName 出力ファイル名（拡張子なし）
- * @returns 生成されたPDFのURL
+ * Word バッファを PDF バッファに変換する（DB保存用）
  */
-export async function generatePDF(
-  docxBuffer: Buffer,
-  fileName?: string
-): Promise<{ pdfUrl: string; pdfPath: string }> {
-  // 生成ディレクトリが存在しない場合は作成
-  if (!fs.existsSync(GENERATED_DIR)) {
-    fs.mkdirSync(GENERATED_DIR, { recursive: true })
-  }
-
-  // ファイル名を生成
-  const fileId = fileName || uuidv4()
-  const pdfFileName = `${fileId}.pdf`
-  const pdfPath = path.join(GENERATED_DIR, pdfFileName)
-
-  // WordをHTMLに変換
+export async function generatePDFBuffer(docxBuffer: Buffer): Promise<Buffer> {
   const result = await mammoth.convertToHtml({ buffer: docxBuffer })
-  const htmlContent = result.value
+  const fullHtml = buildHtml(result.value)
 
-  // HTMLをPDFに変換
   const browser = await puppeteer.launch(getPuppeteerLaunchOptions())
-
   try {
     const page = await browser.newPage()
-
-    // HTML全体を構築（スタイル付き）
-    const fullHtml = `
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          @page {
-            size: A4;
-            margin: 20mm;
-          }
-          body {
-            font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
-            font-size: 12pt;
-            line-height: 1.6;
-            color: #333;
-          }
-          h1, h2, h3 {
-            color: #222;
-          }
-          table {
-            border-collapse: collapse;
-            width: 100%;
-          }
-          th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-          }
-          p {
-            margin: 0.5em 0;
-          }
-        </style>
-      </head>
-      <body>
-        ${htmlContent}
-      </body>
-      </html>
-    `
-
-    await page.setContent(fullHtml, {
-      waitUntil: "networkidle0",
-    })
-
-    await page.pdf({
-      path: pdfPath,
+    await page.setContent(fullHtml, { waitUntil: "networkidle0" })
+    const pdfUint8 = await page.pdf({
       format: "A4",
       printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "20mm",
-        bottom: "20mm",
-        left: "20mm",
-      },
+      margin: { top: "20mm", right: "20mm", bottom: "20mm", left: "20mm" },
     })
-
-    return {
-      pdfUrl: `/generated/${pdfFileName}`,
-      pdfPath,
-    }
+    return Buffer.from(pdfUint8)
   } finally {
     await browser.close()
   }
 }
 
 /**
- * 一時的なPDFを生成する（プレビュー用）
- * @param docxBuffer WordファイルのBuffer
- * @returns PDFのBase64エンコードされた文字列
+ * プレビュー用：PDF の Base64 文字列を返す
  */
 export async function generatePDFPreview(docxBuffer: Buffer): Promise<string> {
-  // WordをHTMLに変換
-  const result = await mammoth.convertToHtml({ buffer: docxBuffer })
-  const htmlContent = result.value
-
-  const browser = await puppeteer.launch(getPuppeteerLaunchOptions())
-
-  try {
-    const page = await browser.newPage()
-
-    const fullHtml = `
-      <!DOCTYPE html>
-      <html lang="ja">
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          @page {
-            size: A4;
-            margin: 20mm;
-          }
-          body {
-            font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
-            font-size: 12pt;
-            line-height: 1.6;
-            color: #333;
-          }
-          h1, h2, h3 {
-            color: #222;
-          }
-          table {
-            border-collapse: collapse;
-            width: 100%;
-          }
-          th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-          }
-          p {
-            margin: 0.5em 0;
-          }
-        </style>
-      </head>
-      <body>
-        ${htmlContent}
-      </body>
-      </html>
-    `
-
-    await page.setContent(fullHtml, {
-      waitUntil: "networkidle0",
-    })
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "20mm",
-        bottom: "20mm",
-        left: "20mm",
-      },
-    })
-
-    // Base64エンコード
-    return Buffer.from(pdfBuffer).toString("base64")
-  } finally {
-    await browser.close()
-  }
-}
-
-/**
- * PDFファイルを削除する
- * @param pdfUrl PDFのURL
- */
-export async function deletePDF(pdfUrl: string): Promise<void> {
-  const fileName = path.basename(pdfUrl)
-  const pdfPath = path.join(GENERATED_DIR, fileName)
-
-  if (fs.existsSync(pdfPath)) {
-    fs.unlinkSync(pdfPath)
-  }
+  const pdfBuffer = await generatePDFBuffer(docxBuffer)
+  return pdfBuffer.toString("base64")
 }

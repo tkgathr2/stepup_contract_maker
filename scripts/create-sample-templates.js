@@ -180,10 +180,58 @@ async function createInvoiceTemplate() {
   console.log("送り状テンプレートを作成しました: templates/invoice_template.docx")
 }
 
+async function syncTemplatesToDB() {
+  // Prisma Client を動的に読み込み（ビルド後に利用可能）
+  let PrismaClient
+  try {
+    PrismaClient = require("@prisma/client").PrismaClient
+  } catch {
+    console.log("Prisma Client が見つかりません。DB同期をスキップします。")
+    return
+  }
+
+  const prisma = new PrismaClient()
+  try {
+    const templatesDir = path.join(__dirname, "..", "templates")
+    const files = [
+      { name: "契約書テンプレート", type: "contract", file: "contract_template.docx" },
+      { name: "送り状テンプレート", type: "invoice", file: "invoice_template.docx" },
+    ]
+
+    for (const tpl of files) {
+      const filePath = path.join(templatesDir, tpl.file)
+      if (!fs.existsSync(filePath)) continue
+
+      const fileData = fs.readFileSync(filePath)
+      const dbPath = `/templates/${tpl.file}`
+
+      // 既存テンプレートがあれば fileData を更新、なければ作成
+      const existing = await prisma.template.findFirst({ where: { filePath: dbPath } })
+      if (existing) {
+        await prisma.template.update({
+          where: { id: existing.id },
+          data: { fileData },
+        })
+        console.log(`DB更新: ${tpl.name} (fileData同期)`)
+      } else {
+        await prisma.template.create({
+          data: { name: tpl.name, type: tpl.type, filePath: dbPath, fileData },
+        })
+        console.log(`DB作成: ${tpl.name}`)
+      }
+    }
+  } finally {
+    await prisma.$disconnect()
+  }
+}
+
 async function main() {
   await createContractTemplate()
   await createInvoiceTemplate()
   console.log("\nサンプルテンプレートの作成が完了しました。")
+
+  // テンプレートの fileData を DB に同期
+  await syncTemplatesToDB()
 }
 
 main().catch(console.error)

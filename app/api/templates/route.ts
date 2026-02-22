@@ -105,17 +105,23 @@ export async function POST(request: NextRequest) {
     const fileName = `${fileId}.docx`
     const filePath = path.join(TEMPLATES_DIR, fileName)
 
-    // ファイルを保存
+    // ファイルを保存（ファイルシステム + DB両方）
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
+
+    // ファイルシステムにも書き込み（ローカル開発用フォールバック）
+    if (!fs.existsSync(TEMPLATES_DIR)) {
+      fs.mkdirSync(TEMPLATES_DIR, { recursive: true })
+    }
     fs.writeFileSync(filePath, buffer)
 
-    // データベースに保存
+    // データベースに保存（fileData にバイナリも格納）
     const template = await db.template.create({
       data: {
         name: name.trim(),
         type,
         filePath: `/templates/${fileName}`,
+        fileData: buffer,
       },
     })
 
