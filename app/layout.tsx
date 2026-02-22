@@ -15,8 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "契約書・送り状自動生成システム",
-  description: "株式会社ステップアップ向けの契約書・送り状自動生成システム",
+  title: "ラクラク契約くん",
+  description: "契約書・送付状自動生成システム",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
