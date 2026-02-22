@@ -95,19 +95,22 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // テンプレートディレクトリが存在しない場合は作成
-    if (!fs.existsSync(TEMPLATES_DIR)) {
-      fs.mkdirSync(TEMPLATES_DIR, { recursive: true })
+    // ファイル内容を読み込み
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // docxファイルの基本検証（ZIP形式 = PK マジックバイト）
+    if (buffer.length < 4 || buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "有効な.docxファイルではありません。正しいWord文書をアップロードしてください。", {
+        field: "file",
+        reason: "invalid_content",
+      })
     }
 
     // ファイル名を生成（UUIDを使用してユニークに）
     const fileId = uuidv4()
     const fileName = `${fileId}.docx`
     const filePath = path.join(TEMPLATES_DIR, fileName)
-
-    // ファイルを保存（ファイルシステム + DB両方）
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
 
     // ファイルシステムにも書き込み（ローカル開発用フォールバック）
     if (!fs.existsSync(TEMPLATES_DIR)) {

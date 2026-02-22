@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import CompanyForm, { CompanyData } from "@/components/forms/CompanyForm"
@@ -11,6 +11,7 @@ export default function GeneratePage() {
   const [templateId, setTemplateId] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isPreviewing, setIsPreviewing] = useState(false)
+  const submittingRef = useRef(false)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [previewPdf, setPreviewPdf] = useState<string | null>(null)
 
@@ -19,6 +20,8 @@ export default function GeneratePage() {
       toast.error("テンプレートを選択してください")
       return
     }
+    if (submittingRef.current) return
+    submittingRef.current = true
 
     setIsLoading(true)
     setPdfUrl(null)
@@ -47,6 +50,7 @@ export default function GeneratePage() {
       toast.error(error instanceof Error ? error.message : "エラーが発生しました")
     } finally {
       setIsLoading(false)
+      submittingRef.current = false
     }
   }
 
@@ -55,6 +59,9 @@ export default function GeneratePage() {
       toast.error("テンプレートを選択してください")
       return
     }
+
+    if (submittingRef.current) return
+    submittingRef.current = true
 
     setIsPreviewing(true)
     setPreviewPdf(null)
@@ -84,6 +91,7 @@ export default function GeneratePage() {
       toast.error(error instanceof Error ? error.message : "エラーが発生しました")
     } finally {
       setIsPreviewing(false)
+      submittingRef.current = false
     }
   }
 

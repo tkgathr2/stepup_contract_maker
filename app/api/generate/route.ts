@@ -5,7 +5,7 @@ import { db } from "@/lib/db"
 import { logAction, logError } from "@/lib/logger"
 import { processTemplate } from "@/lib/template-processor"
 import { generatePDFBuffer, generatePDFPreview } from "@/lib/pdf-generator"
-import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
+import { ErrorCode, sendError, handleInternalError, captureInternalError } from "@/lib/api-error"
 
 // PDF生成
 export async function POST(request: NextRequest) {
@@ -143,6 +143,17 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     logError(userId, email, name, error as Error)
+
+    // ユーザーが対処可能なエラーは具体的なメッセージを返す
+    const msg = (error as Error).message || ""
+    if (msg.includes("テンプレートファイルが見つかりません")) {
+      captureInternalError(error, "generate")
+      return sendError(500, ErrorCode.INTERNAL_ERROR, "テンプレートファイルが見つかりません。再アップロードしてください。")
+    }
+    if (msg.includes("Chromium") || msg.includes("chromium") || msg.includes("Failed to launch")) {
+      captureInternalError(error, "generate")
+      return sendError(500, ErrorCode.INTERNAL_ERROR, "PDF変換エンジンが利用できません。管理者にお問い合わせください。")
+    }
     return handleInternalError(error, "generate")
   }
 }

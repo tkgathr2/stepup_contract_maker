@@ -29,6 +29,8 @@ export default function HistoryPage() {
   const [histories, setHistories] = useState<History[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const limit = 20
@@ -43,6 +45,12 @@ export default function HistoryPage() {
       if (search) {
         params.append("search", search)
       }
+      if (fromDate) {
+        params.append("from", fromDate)
+      }
+      if (toDate) {
+        params.append("to", toDate)
+      }
 
       const response = await fetch(`/api/history?${params}`)
       if (!response.ok) throw new Error("Failed to fetch histories")
@@ -55,7 +63,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search])
+  }, [page, search, fromDate, toDate])
 
   useEffect(() => {
     fetchHistories()
@@ -107,28 +115,47 @@ export default function HistoryPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <Input
-              placeholder="会社名で検索..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
-            <Button type="submit" variant="outline">
-              検索
-            </Button>
-            {search && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setSearch("")
-                  setPage(1)
-                }}
-              >
-                クリア
+          <form onSubmit={handleSearch} className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder="会社名で検索..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-sm"
+              />
+              <Button type="submit" variant="outline">
+                検索
               </Button>
-            )}
+              {(search || fromDate || toDate) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setSearch("")
+                    setFromDate("")
+                    setToDate("")
+                    setPage(1)
+                  }}
+                >
+                  クリア
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2 items-center">
+              <Input
+                type="date"
+                value={fromDate}
+                onChange={(e) => { setFromDate(e.target.value); setPage(1) }}
+                className="max-w-[160px]"
+              />
+              <span className="text-muted-foreground text-sm">~</span>
+              <Input
+                type="date"
+                value={toDate}
+                onChange={(e) => { setToDate(e.target.value); setPage(1) }}
+                className="max-w-[160px]"
+              />
+            </div>
           </form>
         </CardContent>
       </Card>

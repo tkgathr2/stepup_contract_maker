@@ -53,6 +53,15 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    if (companies.length > 50) {
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "一括生成は50件までです", {
+        field: "companies",
+        reason: "too_many",
+        maxCount: 50,
+        actualCount: companies.length,
+      })
+    }
+
     // 各会社情報のバリデーション
     for (let i = 0; i < companies.length; i++) {
       const company = companies[i]
