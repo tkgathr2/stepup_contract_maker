@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "chromium"]
+nixPkgs = ["nodejs_20"]
 aptPkgs = [
   "libnss3",
   "libatk-bridge2.0-0",
@@ -15,16 +15,9 @@ aptPkgs = [
   "libxcomposite1",
   "fonts-noto-cjk",
   "fonts-liberation",
-  "libappindicator3-1",
-  "libgtk-3-0",
   "libnspr4",
   "libx11-xcb1",
-  "libxcursor1",
-  "libxfixes3",
-  "libxi6",
-  "libxss1",
-  "libxtst6",
-  "xdg-utils"
+  "libxtst6"
 ]
 
 [phases.install]
