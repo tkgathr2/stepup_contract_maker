@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
-// メインドメイン（Google OAuthのリダイレクトURIが登録済み）
-const PRIMARY_DOMAIN = "stepupcontractmaker-production.up.railway.app"
+// メインドメイン（rakuraku.up.railway.app）
+const PRIMARY_DOMAIN = "rakuraku.up.railway.app"
 
 // 認証が必要なパス
 const PROTECTED_PATHS = [
@@ -21,12 +21,11 @@ export async function middleware(req: NextRequest) {
   const host = req.headers.get("host") || ""
   const pathname = req.nextUrl.pathname
 
-  // rakuraku.up.railway.app → メインドメインにリダイレクト
-  // Google OAuthのredirect_uriがメインドメインで登録されているため
+  // 旧ドメイン → rakuraku.up.railway.app にリダイレクト
   if (
     host !== PRIMARY_DOMAIN &&
     host.endsWith(".railway.app") &&
-    host !== "localhost:3000"
+    !pathname.startsWith("/api/auth")
   ) {
     const url = req.nextUrl.clone()
     url.host = PRIMARY_DOMAIN
