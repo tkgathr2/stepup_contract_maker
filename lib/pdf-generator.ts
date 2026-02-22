@@ -1,9 +1,48 @@
 import puppeteer from "puppeteer-core"
 import chromium from "@sparticuz/chromium"
 import mammoth from "mammoth"
+import { execSync } from "child_process"
+
+/**
+ * Chromium が必要とする共有ライブラリのパスを動的に検出し、
+ * LD_LIBRARY_PATH に追加する（nixpacks 環境では標準パスにないため）
+ */
+function ensureLibraryPaths(): void {
+  if (process.env.__CHROMIUM_LDPATH_SET === "1") return
+
+  const markers = ["libnspr4.so", "libnss3.so", "libgbm.so.1"]
+  const dirs = new Set<string>()
+
+  for (const lib of markers) {
+    try {
+      const result = execSync(`find /nix /usr /lib -name '${lib}' 2>/dev/null || true`, {
+        encoding: "utf-8",
+        timeout: 5000,
+      }).trim()
+      for (const line of result.split("\n")) {
+        if (line) {
+          const dir = line.substring(0, line.lastIndexOf("/"))
+          if (dir) dirs.add(dir)
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (dirs.size > 0) {
+    const existing = process.env.LD_LIBRARY_PATH || ""
+    const newPath = [...dirs, ...existing.split(":").filter(Boolean)].join(":")
+    process.env.LD_LIBRARY_PATH = newPath
+    console.log(`[RAKURAKU] LD_LIBRARY_PATH set to: ${newPath}`)
+  }
+
+  process.env.__CHROMIUM_LDPATH_SET = "1"
+}
 
 // @sparticuz/chromium はコンテナ環境向けに最適化された Chromium バイナリを同梱
 async function getPuppeteerLaunchOptions() {
+  ensureLibraryPaths()
   return {
     headless: true as const,
     executablePath: await chromium.executablePath(),
