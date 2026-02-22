@@ -7,16 +7,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-const sentryBuildOptions = {
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
   project: "rakuraku-keiyaku-kun",
+  silent: !process.env.CI,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
   tunnelRoute: "/monitoring",
-  disableLogger: true,
-  ...(process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG
-    ? {
-        authToken: process.env.SENTRY_AUTH_TOKEN,
-        org: process.env.SENTRY_ORG,
-      }
-    : {}),
-};
-
-export default withSentryConfig(nextConfig, sentryBuildOptions);
+});

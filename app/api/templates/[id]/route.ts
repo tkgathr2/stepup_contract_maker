@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { logAction, logError } from "@/lib/logger"
+import { logAction } from "@/lib/logger"
 import * as fs from "fs"
 import * as path from "path"
 import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
@@ -33,7 +33,7 @@ export async function GET(
 
     return NextResponse.json({ template })
   } catch (error) {
-    return handleInternalError(error, "テンプレート取得")
+    return handleInternalError(error, "templates/[id]/GET")
   }
 }
 
@@ -63,11 +63,17 @@ export async function PUT(
 
     // バリデーション
     if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "テンプレート名が無効です")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "name",
+        reason: "invalid",
+      })
     }
 
     if (type !== undefined && type !== "contract" && type !== "invoice") {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "タイプは 'contract' または 'invoice' である必要があります")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "type",
+        reason: "invalid",
+      })
     }
 
     const updatedTemplate = await db.template.update({
@@ -91,16 +97,7 @@ export async function PUT(
       template: updatedTemplate,
     })
   } catch (error) {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.id) {
-      logError(
-        session.user.id,
-        session.user.email || "unknown",
-        session.user.name || "unknown",
-        error as Error
-      )
-    }
-    return handleInternalError(error, "テンプレート更新")
+    return handleInternalError(error, "templates/[id]/PUT")
   }
 }
 
@@ -113,10 +110,7 @@ export async function DELETE(
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "認証が必要です" },
-        { status: 401 }
-      )
+      return sendError(401, ErrorCode.UNAUTHORIZED, "認証が必要です")
     }
 
     const { id } = await params
@@ -126,10 +120,7 @@ export async function DELETE(
     })
 
     if (!template) {
-      return NextResponse.json(
-        { error: "テンプレートが見つかりません" },
-        { status: 404 }
-      )
+      return sendError(404, ErrorCode.NOT_FOUND, "テンプレートが見つかりません")
     }
 
     // ファイルを削除
@@ -157,15 +148,6 @@ export async function DELETE(
       message: "テンプレートを削除しました",
     })
   } catch (error) {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.id) {
-      logError(
-        session.user.id,
-        session.user.email || "unknown",
-        session.user.name || "unknown",
-        error as Error
-      )
-    }
-    return handleInternalError(error, "テンプレート削除")
+    return handleInternalError(error, "templates/[id]/DELETE")
   }
 }

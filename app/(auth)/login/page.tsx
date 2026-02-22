@@ -15,7 +15,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">ログイン</CardTitle>
           <CardDescription>
-            契約書・送り状自動生成システム
+            ラクラク契約くん
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

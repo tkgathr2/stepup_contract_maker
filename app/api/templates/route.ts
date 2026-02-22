@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { logAction, logError } from "@/lib/logger"
+import { logAction } from "@/lib/logger"
 import * as fs from "fs"
 import * as path from "path"
 import { v4 as uuidv4 } from "uuid"
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ templates })
   } catch (error) {
-    return handleInternalError(error, "テンプレート一覧取得")
+    return handleInternalError(error, "templates/GET")
   }
 }
 
@@ -58,24 +58,41 @@ export async function POST(request: NextRequest) {
 
     // バリデーション
     if (!file) {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "ファイルが必要です")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "file",
+        reason: "required",
+      })
     }
 
     if (!name || name.trim() === "") {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "テンプレート名が必要です")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "name",
+        reason: "required",
+      })
     }
 
     if (!type || (type !== "contract" && type !== "invoice")) {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "タイプは 'contract' または 'invoice' である必要があります")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "type",
+        reason: "invalid",
+      })
     }
 
     // ファイル検証
     if (!file.name.endsWith(".docx")) {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "Word形式（.docx）のファイルのみアップロード可能です")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "file",
+        reason: "invalid_extension",
+        expected: ".docx",
+      })
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "ファイルサイズは10MB以下である必要があります")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "file",
+        reason: "too_large",
+        maxBytes: MAX_FILE_SIZE,
+      })
     }
 
     // テンプレートディレクトリが存在しない場合は作成
@@ -115,15 +132,6 @@ export async function POST(request: NextRequest) {
       template,
     })
   } catch (error) {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.id) {
-      logError(
-        session.user.id,
-        session.user.email || "unknown",
-        session.user.name || "unknown",
-        error as Error
-      )
-    }
-    return handleInternalError(error, "テンプレートアップロード")
+    return handleInternalError(error, "templates/POST")
   }
 }

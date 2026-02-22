@@ -26,28 +26,52 @@ export async function POST(request: NextRequest) {
 
     // バリデーション
     if (!companyName || typeof companyName !== "string") {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "会社名は必須です")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "companyName",
+        reason: "required",
+      })
     }
     if (companyName.length > 100) {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "会社名は100文字以内で入力してください")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "companyName",
+        reason: "too_long",
+        maxLength: 100,
+      })
     }
 
     if (!address || typeof address !== "string") {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "住所は必須です")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "address",
+        reason: "required",
+      })
     }
     if (address.length > 500) {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "住所は500文字以内で入力してください")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "address",
+        reason: "too_long",
+        maxLength: 500,
+      })
     }
 
     if (!representativeName || typeof representativeName !== "string") {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "代表者名は必須です")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "representativeName",
+        reason: "required",
+      })
     }
     if (representativeName.length > 100) {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "代表者名は100文字以内で入力してください")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "representativeName",
+        reason: "too_long",
+        maxLength: 100,
+      })
     }
 
     if (!templateId || typeof templateId !== "string") {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "テンプレートを選択してください")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "templateId",
+        reason: "required",
+      })
     }
 
     // テンプレートを取得
@@ -114,6 +138,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     logError(userId, email, name, error as Error)
-    return handleInternalError(error, "PDF生成")
+    return handleInternalError(error, "generate")
   }
 }

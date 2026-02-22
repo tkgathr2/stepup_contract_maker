@@ -103,6 +103,6 @@ export async function GET(request: NextRequest) {
       limit: validatedLimit,
     })
   } catch (error) {
-    return handleInternalError(error, "履歴取得")
+    return handleInternalError(error, "history/GET")
   }
 }

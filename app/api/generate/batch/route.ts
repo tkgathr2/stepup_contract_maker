@@ -6,7 +6,7 @@ import { logAction, logError } from "@/lib/logger"
 import { processTemplate } from "@/lib/template-processor"
 import { generatePDF } from "@/lib/pdf-generator"
 import { v4 as uuidv4 } from "uuid"
-import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
+import { ErrorCode, sendError, handleInternalError, captureInternalError } from "@/lib/api-error"
 
 interface CompanyData {
   companyName: string
@@ -41,24 +41,39 @@ export async function POST(request: NextRequest) {
 
     // バリデーション
     if (!templateId || typeof templateId !== "string") {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "テンプレートを選択してください")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "templateId",
+        reason: "required",
+      })
     }
 
     if (!Array.isArray(companies) || companies.length === 0) {
-      return sendError(400, ErrorCode.INVALID_PAYLOAD, "会社情報を1件以上入力してください")
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "companies",
+        reason: "required",
+      })
     }
 
     // 各会社情報のバリデーション
     for (let i = 0; i < companies.length; i++) {
       const company = companies[i]
       if (!company.companyName || company.companyName.length > 100) {
-        return sendError(400, ErrorCode.INVALID_PAYLOAD, `${i + 1}番目の会社名が不正です`)
+        return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+          index: i,
+          field: "companyName",
+        })
       }
       if (!company.address || company.address.length > 500) {
-        return sendError(400, ErrorCode.INVALID_PAYLOAD, `${i + 1}番目の住所が不正です`)
+        return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+          index: i,
+          field: "address",
+        })
       }
       if (!company.representativeName || company.representativeName.length > 100) {
-        return sendError(400, ErrorCode.INVALID_PAYLOAD, `${i + 1}番目の代表者名が不正です`)
+        return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+          index: i,
+          field: "representativeName",
+        })
       }
     }
 
@@ -121,6 +136,7 @@ export async function POST(request: NextRequest) {
         }
       } catch (error) {
         logError(userId, email, name, error as Error)
+        captureInternalError(error, "generate/batch:item")
         return {
           success: false,
           companyName: company.companyName,
@@ -168,6 +184,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     logError(userId, email, name, error as Error)
-    return handleInternalError(error, "一括PDF生成")
+    return handleInternalError(error, "generate/batch")
   }
 }
