@@ -24,4 +24,4 @@ cmds = ["npm ci"]
 cmds = ["npx prisma generate && npx next build"]
 
 [start]
-cmd = "npx prisma migrate deploy && npm start"
+cmd = "npm start"
