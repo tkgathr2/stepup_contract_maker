@@ -104,25 +104,25 @@ export default function DashboardPage() {
 
   const statsCards = [
     {
-      label: "\u7dcf\u751f\u6210\u6570",
+      label: "総生成数",
       value: stats?.totalGenerated || 0,
-      description: "\u3053\u308c\u307e\u3067\u306b\u751f\u6210\u3057\u305fPDF\u306e\u7dcf\u6570",
+      description: "これまでに生成したPDFの総数",
       icon: TrendingUp,
       color: "text-primary",
       bgColor: "bg-primary/8",
     },
     {
-      label: "\u4eca\u6708\u306e\u751f\u6210\u6570",
+      label: "今月の生成数",
       value: stats?.thisMonthGenerated || 0,
-      description: "\u4eca\u6708\u751f\u6210\u3057\u305fPDF\u306e\u6570",
+      description: "今月生成したPDFの数",
       icon: CalendarDays,
       color: "text-violet-500",
       bgColor: "bg-violet-50",
     },
     {
-      label: "\u767b\u9332\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u6570",
+      label: "登録テンプレート数",
       value: stats?.templatesCount || 0,
-      description: "\u5229\u7528\u53ef\u80fd\u306a\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8",
+      description: "利用可能なテンプレート",
       icon: FileStack,
       color: "text-emerald-500",
       bgColor: "bg-emerald-50",
@@ -131,35 +131,35 @@ export default function DashboardPage() {
 
   const quickActions = [
     {
-      title: "PDF\u751f\u6210",
-      description: "\u4f1a\u793e\u60c5\u5831\u3092\u5165\u529b\u3057\u3066PDF\u3092\u751f\u6210",
+      title: "PDF生成",
+      description: "会社情報を入力してPDFを生成",
       icon: FileText,
       href: "/generate",
-      buttonLabel: "\u65b0\u898f\u751f\u6210",
+      buttonLabel: "新規生成",
       primary: true,
     },
     {
-      title: "\u4e00\u62ec\u751f\u6210",
-      description: "\u8907\u6570\u306e\u4f1a\u793e\u60c5\u5831\u3092\u4e00\u62ec\u3067PDF\u5316",
+      title: "一括生成",
+      description: "複数の会社情報を一括でPDF化",
       icon: Layers,
       href: "/batch",
-      buttonLabel: "\u4e00\u62ec\u751f\u6210",
+      buttonLabel: "一括生成",
       primary: false,
     },
     {
-      title: "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u7ba1\u7406",
-      description: "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306e\u30a2\u30c3\u30d7\u30ed\u30fc\u30c9\u30fb\u7ba1\u7406",
+      title: "テンプレート管理",
+      description: "テンプレートのアップロード・管理",
       icon: FolderOpen,
       href: "/templates",
-      buttonLabel: "\u7ba1\u7406\u3059\u308b",
+      buttonLabel: "管理する",
       primary: false,
     },
     {
-      title: "\u751f\u6210\u5c65\u6b74",
-      description: "\u904e\u53bb\u306b\u751f\u6210\u3057\u305fPDF\u3092\u78ba\u8a8d",
+      title: "生成履歴",
+      description: "過去に生成したPDFを確認",
       icon: Clock,
       href: "/history",
-      buttonLabel: "\u5c65\u6b74\u3092\u898b\u308b",
+      buttonLabel: "履歴を見る",
       primary: false,
     },
   ]
@@ -168,10 +168,10 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">
-          \u304a\u304b\u3048\u308a\u306a\u3055\u3044\u3001{session?.user?.name}\u3055\u3093
+          おかえりなさい、{session?.user?.name}さん
         </h1>
         <p className="text-muted-foreground mt-1">
-          \u4eca\u65e5\u3082\u52b9\u7387\u7684\u306b\u66f8\u985e\u3092\u4f5c\u6210\u3057\u307e\u3057\u3087\u3046
+          今日も効率的に書類を作成しましょう
         </p>
       </div>
 
@@ -227,13 +227,13 @@ export default function DashboardPage() {
       <Card className="border-border/60 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-lg">\u6700\u8fd1\u306e\u751f\u6210\u5c65\u6b74</CardTitle>
-            <CardDescription>\u76f4\u8fd15\u4ef6\u306e\u751f\u6210\u5c65\u6b74</CardDescription>
+            <CardTitle className="text-lg">最近の生成履歴</CardTitle>
+            <CardDescription>直近5件の生成履歴</CardDescription>
           </div>
           {recentHistories.length > 0 && (
             <Link href="/history">
               <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                \u3059\u3079\u3066\u898b\u308b
+                すべて見る
                 <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
@@ -243,26 +243,26 @@ export default function DashboardPage() {
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-              <span className="ml-3 text-sm text-muted-foreground">\u8aad\u307f\u8fbc\u307f\u4e2d...</span>
+              <span className="ml-3 text-sm text-muted-foreground">読み込み中...</span>
             </div>
           ) : recentHistories.length === 0 ? (
             <div className="text-center py-10">
               <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto mb-3">
                 <Clock className="w-6 h-6 text-muted-foreground" />
               </div>
-              <p className="text-muted-foreground">\u307e\u3060\u751f\u6210\u5c65\u6b74\u304c\u3042\u308a\u307e\u305b\u3093</p>
+              <p className="text-muted-foreground">まだ生成履歴がありません</p>
               <Link href="/generate">
-                <Button className="mt-4" size="sm">\u6700\u521d\u306ePDF\u3092\u751f\u6210\u3059\u308b</Button>
+                <Button className="mt-4" size="sm">最初のPDFを生成する</Button>
               </Link>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>\u4f1a\u793e\u540d</TableHead>
-                  <TableHead>\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8</TableHead>
-                  <TableHead>\u751f\u6210\u65e5\u6642</TableHead>
-                  <TableHead className="text-right">\u64cd\u4f5c</TableHead>
+                  <TableHead>会社名</TableHead>
+                  <TableHead>テンプレート</TableHead>
+                  <TableHead>生成日時</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
