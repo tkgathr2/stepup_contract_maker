@@ -1,12 +1,15 @@
 import * as fs from "fs"
+import { execSync } from "child_process"
 import puppeteer from "puppeteer-core"
 import mammoth from "mammoth"
 
 // puppeteer-core はブラウザを同梱しないため、システムの Chromium パスを必ず指定する
 function getChromiumPath(): string {
+  // 1. 環境変数で明示指定されていればそれを使う
   const envPath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROMIUM_PATH
   if (envPath && fs.existsSync(envPath)) return envPath
 
+  // 2. 既知のパスを順にチェック
   const candidates = [
     "/usr/bin/chromium",
     "/usr/bin/chromium-browser",
@@ -16,6 +19,21 @@ function getChromiumPath(): string {
   for (const p of candidates) {
     if (fs.existsSync(p)) return p
   }
+
+  // 3. PATH 上の chromium を動的に探す（nixpacks の Nix パッケージ対応）
+  const whichCommands = ["which chromium", "which chromium-browser", "which google-chrome-stable"]
+  for (const cmd of whichCommands) {
+    try {
+      const result = execSync(cmd, { encoding: "utf-8" }).trim()
+      if (result && fs.existsSync(result)) {
+        console.log(`[RAKURAKU] Chromium found via '${cmd}': ${result}`)
+        return result
+      }
+    } catch {
+      // command not found — skip
+    }
+  }
+
   throw new Error(
     "Chromium が見つかりません。PUPPETEER_EXECUTABLE_PATH 環境変数を設定するか、システムに Chromium をインストールしてください。"
   )
