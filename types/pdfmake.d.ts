@@ -28,7 +28,7 @@ declare module "pdfmake/src/Printer" {
 
   class PdfPrinter {
     constructor(fontDescriptors: FontDescriptors)
-    createPdfKitDocument(docDefinition: DocDefinition): PdfKitDocument
+    createPdfKitDocument(docDefinition: DocDefinition): Promise<PdfKitDocument>
   }
 
   export default PdfPrinter
