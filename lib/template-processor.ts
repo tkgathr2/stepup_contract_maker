@@ -218,9 +218,36 @@ function removeConsecutiveEmptyParagraphs(xml: string): string {
   return result
 }
 
+/**
+ * Word文書からナンバリングプロパティ（w:numPr）を除去する
+ * テンプレートの番号付きリスト定義が Word で ■ マーカーとしてレンダリングされるのを防止する
+ * document.xml と styles.xml の両方から除去する
+ */
+function stripNumberingProperties(zip: PizZip): void {
+  const targets = ["word/document.xml", "word/styles.xml"]
+  for (const target of targets) {
+    const file = zip.file(target)
+    if (!file) continue
+    let xml = file.asText()
+    // <w:numPr>...</w:numPr> を除去（ネストなし、最短一致）
+    xml = xml.replace(/<w:numPr>[\s\S]*?<\/w:numPr>/g, "")
+    // 自己終了タグ形式も除去
+    xml = xml.replace(/<w:numPr\/>/g, "")
+    zip.file(target, xml)
+  }
+
+  // numbering.xml 自体も除去（番号定義の参照元をなくす）
+  const numberingFile = zip.file("word/numbering.xml")
+  if (numberingFile) {
+    zip.remove("word/numbering.xml")
+  }
+}
+
 export interface ProcessTemplateOptions {
   /** true の場合、PDF変換向けレイアウト最適化（keepNext, spacing圧縮, マージン縮小, 空段落削除）をスキップする */
   skipLayoutOptimization?: boolean
+  /** true の場合、Word文書から中黒（■）マーカー（numPr）を削除する */
+  removeNumbering?: boolean
 }
 
 /**
@@ -293,6 +320,11 @@ export async function processTemplate(
     }
 
     zip.file(xmlFile, xmlContent)
+  }
+
+  // Word DL用: ナンバリングプロパティを除去して■マーカーを防止
+  if (options?.removeNumbering) {
+    stripNumberingProperties(zip)
   }
 
   const buf = zip.generate({

@@ -101,8 +101,8 @@ export async function POST(request: NextRequest) {
     }
     // PDF変換用（レイアウト最適化あり）
     const docxBuffer = await processTemplate(template, templateData)
-    // Word DL用（レイアウト最適化なし — keepNextの■マーカーを防止）
-    const wordBuffer = await processTemplate(template, templateData, { skipLayoutOptimization: true })
+    // Word DL用（レイアウト最適化なし + 中黒マーカー削除）
+    const wordBuffer = await processTemplate(template, templateData, { skipLayoutOptimization: true, removeNumbering: true })
     logAction(userId, email, name, "テンプレート読み込み", "成功")
 
     // プレビューモードの場合
