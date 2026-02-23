@@ -72,6 +72,106 @@ function replaceInXml(xml: string, placeholder: string, value: string): string {
 }
 
 /**
+ * 文書末尾の署名ブロックに w:keepNext を追加してページ分割を防止する
+ * </w:body> 直前の段落群（署名ブロック＋日付行）を検出し、
+ * 各段落の <w:pPr> に <w:keepNext/> を挿入する
+ * これにより LibreOffice が署名ブロックをページ境界で分断しなくなる
+ */
+function addKeepNextToEndBlock(xml: string): string {
+  // </w:body> の位置を探す
+  const bodyEndIdx = xml.lastIndexOf("</w:body>")
+  if (bodyEndIdx === -1) return xml
+
+  // </w:body> 直前の sectPr を除いた最後の段落群を対象にする
+  // 「本契約の成立を証する」「令和」「（甲）」「（乙）」等を含む末尾ブロック
+  // 末尾から最大20段落（十分な範囲）に keepNext を追加
+
+  // 末尾の <w:p> ... </w:p> を全て収集
+  const allParas: Array<{ start: number; end: number }> = []
+  const paraRegex = /<w:p[\s>]/g
+  let match
+  while ((match = paraRegex.exec(xml)) !== null) {
+    const paraStart = match.index
+    // この <w:p の閉じ </w:p> を見つける
+    const closeTag = "</w:p>"
+    const closeIdx = xml.indexOf(closeTag, paraStart)
+    if (closeIdx !== -1) {
+      allParas.push({ start: paraStart, end: closeIdx + closeTag.length })
+    }
+  }
+
+  // bodyEnd より前の段落のみを対象
+  const parasBeforeBody = allParas.filter(p => p.end <= bodyEndIdx)
+
+  // 末尾20段落に keepNext を追加（署名ブロック全体をカバー）
+  const targetParas = parasBeforeBody.slice(-20)
+
+  // 後ろから処理（インデックスがずれないように）
+  let result = xml
+  for (let i = targetParas.length - 1; i >= 0; i--) {
+    const para = targetParas[i]
+    const paraContent = result.substring(para.start, para.end)
+
+    // 既に keepNext がある場合はスキップ
+    if (paraContent.includes("<w:keepNext/>") || paraContent.includes("<w:keepNext ")) {
+      continue
+    }
+
+    // <w:pPr> がある場合はその中に追加
+    const pPrIdx = paraContent.indexOf("<w:pPr>")
+    if (pPrIdx !== -1) {
+      const insertPos = para.start + pPrIdx + "<w:pPr>".length
+      result = result.substring(0, insertPos) + "<w:keepNext/>" + result.substring(insertPos)
+    } else {
+      // <w:pPr> がない場合は <w:p...> の直後に追加
+      const pTagEnd = result.indexOf(">", para.start)
+      if (pTagEnd !== -1) {
+        const insertPos = pTagEnd + 1
+        result = result.substring(0, insertPos) + "<w:pPr><w:keepNext/></w:pPr>" + result.substring(insertPos)
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * 段落間の過剰な空白を圧縮する（全テンプレート共通）
+ * - w:spacing w:after の大きな値を縮小
+ * - 連続する空段落（テキストなし）を最大1つに圧縮
+ * - w:spacing w:before の大きな値を縮小
+ */
+function compactSpacing(xml: string): string {
+  let result = xml
+
+  // w:spacing w:after="240" 以上の値を "120" に圧縮
+  result = result.replace(
+    /(<w:spacing\s[^/]*?)w:after="(\d+)"([^/]*?\/>)/g,
+    (_match, prefix: string, afterVal: string, suffix: string) => {
+      const val = parseInt(afterVal, 10)
+      if (val > 160) {
+        return `${prefix}w:after="${Math.min(val, 120)}"${suffix}`
+      }
+      return `${prefix}w:after="${afterVal}"${suffix}`
+    }
+  )
+
+  // w:spacing w:before="240" 以上の値を "120" に圧縮
+  result = result.replace(
+    /(<w:spacing\s[^/]*?)w:before="(\d+)"([^/]*?\/>)/g,
+    (_match, prefix: string, beforeVal: string, suffix: string) => {
+      const val = parseInt(beforeVal, 10)
+      if (val > 160) {
+        return `${prefix}w:before="${Math.min(val, 120)}"${suffix}`
+      }
+      return `${prefix}w:before="${beforeVal}"${suffix}`
+    }
+  )
+
+  return result
+}
+
+/**
  * Wordテンプレートにデータを埋め込む（【】形式プレースホルダー対応）
  * @param template DB テンプレート行（filePath + fileData）
  * @param data 埋め込むデータ
@@ -124,6 +224,15 @@ export async function processTemplate(
     // 日本語フォント（IPAGothic, NotoSansCJKjp）を選択する
     xmlContent = xmlContent.replace(/w:eastAsia="zh-CN"/g, 'w:eastAsia="ja-JP"')
     xmlContent = xmlContent.replace(/w:eastAsia="zh-TW"/g, 'w:eastAsia="ja-JP"')
+
+    // document.xml のみ: レイアウト最適化（全テンプレート共通）
+    if (xmlFile === "word/document.xml") {
+      // 1. 段落間スペースを圧縮して前に詰める
+      xmlContent = compactSpacing(xmlContent)
+
+      // 2. 末尾の署名ブロックに keepNext を追加してページ分割を防止
+      xmlContent = addKeepNextToEndBlock(xmlContent)
+    }
 
     zip.file(xmlFile, xmlContent)
   }
