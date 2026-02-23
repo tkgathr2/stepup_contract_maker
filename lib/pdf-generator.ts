@@ -1,155 +1,68 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 import mammoth from "mammoth"
-import * as path from "path"
+import path from "path"
+import { JSDOM } from "jsdom"
+import htmlToPdfmake from "html-to-pdfmake"
+import PdfPrinter from "pdfmake/src/Printer"
 
-// pdfmake の server-side Printer を動的に読み込み（型定義が不正確なため require を使用）
-function createPrinter() {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const PdfPrinter = require("pdfmake/src/Printer")
-  const fontsDir = path.join(
-    path.dirname(require.resolve("pdfmake/package.json")),
-    "build",
-    "fonts",
-    "Roboto"
-  )
-  return new PdfPrinter({
-    Roboto: {
-      normal: path.join(fontsDir, "Roboto-Regular.ttf"),
-      bold: path.join(fontsDir, "Roboto-Medium.ttf"),
-      italics: path.join(fontsDir, "Roboto-Italic.ttf"),
-      bolditalics: path.join(fontsDir, "Roboto-MediumItalic.ttf"),
+/**
+ * pdfmake 用フォント定義（日本語対応: Noto Sans JP）
+ * public/fonts/NotoSansJP-Variable.ttf を使用
+ */
+function createPrinter(): PdfPrinter {
+  const fontPath = path.join(process.cwd(), "public", "fonts")
+  const fonts = {
+    NotoSansJP: {
+      normal: path.join(fontPath, "NotoSansJP-Variable.ttf"),
+      bold: path.join(fontPath, "NotoSansJP-Variable.ttf"),
+      italics: path.join(fontPath, "NotoSansJP-Variable.ttf"),
+      bolditalics: path.join(fontPath, "NotoSansJP-Variable.ttf"),
     },
-  })
-}
-
-interface PdfElement {
-  type: string
-  content: string
-  level?: number
+  }
+  return new PdfPrinter(fonts)
 }
 
 /**
- * Word バッファを PDF バッファに変換する（純JavaScript実装）
- * mammoth で docx → HTML、pdfmake で HTML → PDF
+ * Word バッファを PDF バッファに変換する（DB保存用）
+ * pdfmake を使用 — Chromium 不要、純粋な JavaScript で動作
  */
 export async function generatePDFBuffer(docxBuffer: Buffer): Promise<Buffer> {
-  // mammoth で docx を HTML に変換
   const result = await mammoth.convertToHtml({ buffer: docxBuffer })
-  const html = result.value
 
-  // HTML をパースして pdfmake 用コンテンツに変換
-  const content = htmlToPdfContent(html)
-
-  const printer = createPrinter()
+  // HTML を pdfmake ドキュメント定義に変換
+  const { window } = new JSDOM("")
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdfContent = htmlToPdfmake(result.value, { window: window as any })
 
   const docDefinition = {
-    content,
+    content: pdfContent,
     defaultStyle: {
-      font: "Roboto",
-      fontSize: 10,
-      lineHeight: 1.4,
+      font: "NotoSansJP",
+      fontSize: 11,
+      lineHeight: 1.5,
     },
     styles: {
-      heading1: { fontSize: 18, bold: true, margin: [0, 10, 0, 5] },
-      heading2: { fontSize: 14, bold: true, margin: [0, 8, 0, 4] },
-      heading3: { fontSize: 12, bold: true, margin: [0, 6, 0, 3] },
-      paragraph: { margin: [0, 2, 0, 2] },
+      "html-h1": { fontSize: 22, bold: true, marginBottom: 8 },
+      "html-h2": { fontSize: 18, bold: true, marginBottom: 6 },
+      "html-h3": { fontSize: 14, bold: true, marginBottom: 4 },
+      "html-p": { marginBottom: 4 },
+      "html-table": { marginBottom: 8 },
+      "html-th": { bold: true, fillColor: "#f0f0f0" },
     },
-    pageMargins: [40, 40, 40, 40] as [number, number, number, number],
+    pageSize: "A4" as const,
+    pageMargins: [57, 57, 57, 57] as [number, number, number, number], // ~20mm
   }
+
+  const printer = createPrinter()
+  // pdfmake v0.2+ では createPdfKitDocument が Promise を返す
+  const pdfDoc = await printer.createPdfKitDocument(docDefinition)
 
   return new Promise<Buffer>((resolve, reject) => {
-    try {
-      const pdfDoc = printer.createPdfKitDocument(docDefinition)
-      const chunks: Buffer[] = []
-      pdfDoc.on("data", (chunk: Buffer) => chunks.push(chunk))
-      pdfDoc.on("end", () => resolve(Buffer.concat(chunks)))
-      pdfDoc.on("error", reject)
-      pdfDoc.end()
-    } catch (err) {
-      reject(err)
-    }
+    const chunks: Uint8Array[] = []
+    pdfDoc.on("data", (chunk: Uint8Array) => chunks.push(chunk))
+    pdfDoc.on("end", () => resolve(Buffer.concat(chunks)))
+    pdfDoc.on("error", (err: Error) => reject(err))
+    pdfDoc.end()
   })
-}
-
-/**
- * HTML文字列を pdfmake Content 配列に変換する
- */
-function htmlToPdfContent(html: string): Record<string, unknown>[] {
-  const content: Record<string, unknown>[] = []
-  const elements: PdfElement[] = []
-
-  // 全要素を順序通りに抽出（mammothの出力はシンプルなHTML）
-  const allTagRegex = /<(h[1-6]|p|li|table|tr|td|th)[^>]*>([\s\S]*?)<\/\1>/gi
-  let elementMatch
-  while ((elementMatch = allTagRegex.exec(html)) !== null) {
-    const tag = elementMatch[1].toLowerCase()
-    const innerHtml = elementMatch[2]
-    const text = stripHtmlTags(innerHtml).trim()
-
-    if (!text) continue
-
-    if (tag.startsWith("h")) {
-      const level = parseInt(tag[1])
-      elements.push({ type: "heading", content: text, level })
-    } else if (tag === "li") {
-      elements.push({ type: "listItem", content: text })
-    } else if (tag === "p") {
-      elements.push({ type: "paragraph", content: text })
-    } else if (tag === "td" || tag === "th") {
-      elements.push({ type: "cell", content: text })
-    }
-  }
-
-  // 要素が見つからない場合はHTML全体をテキストとして扱う
-  if (elements.length === 0) {
-    const plainText = stripHtmlTags(html).trim()
-    if (plainText) {
-      content.push({ text: plainText, style: "paragraph" })
-    }
-    return content
-  }
-
-  // 各要素をpdfmakeコンテンツに変換
-  for (const el of elements) {
-    switch (el.type) {
-      case "heading":
-        content.push({
-          text: el.content,
-          style: `heading${el.level || 1}`,
-        })
-        break
-      case "listItem":
-        content.push({
-          text: `• ${el.content}`,
-          style: "paragraph",
-          margin: [10, 1, 0, 1],
-        })
-        break
-      case "paragraph":
-      default:
-        content.push({
-          text: el.content,
-          style: "paragraph",
-        })
-    }
-  }
-
-  return content
-}
-
-/**
- * HTMLタグを除去してプレーンテキストを取得する
- */
-function stripHtmlTags(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
 }
 
 /**
