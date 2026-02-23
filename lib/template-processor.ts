@@ -219,36 +219,101 @@ function removeConsecutiveEmptyParagraphs(xml: string): string {
 }
 
 /**
+ * numbering.xml から numId+ilvl → indent(left, hanging) のマッピングを構築する
+ */
+function buildNumberingIndentMap(numbXml: string): Record<string, { left: string; hanging: string }> {
+  const map: Record<string, { left: string; hanging: string }> = {}
+
+  // abstractNum の indent 定義を解析
+  const abstractNums: Record<string, Record<string, { left: string; hanging: string }>> = {}
+  const absRegex = /<w:abstractNum w:abstractNumId="(\d+)"[^>]*>([\s\S]*?)<\/w:abstractNum>/g
+  let am
+  while ((am = absRegex.exec(numbXml)) !== null) {
+    const levels: Record<string, { left: string; hanging: string }> = {}
+    const lvlRegex = /<w:lvl w:ilvl="(\d+)"[^>]*>([\s\S]*?)<\/w:lvl>/g
+    let lm
+    while ((lm = lvlRegex.exec(am[2])) !== null) {
+      const indMatch = lm[2].match(/<w:ind ([^/]*)\/>/);
+      if (indMatch) {
+        const leftM = indMatch[1].match(/w:left="(\d+)"/)
+        const hangM = indMatch[1].match(/w:hanging="(\d+)"/)
+        if (leftM) {
+          levels[lm[1]] = { left: leftM[1], hanging: hangM ? hangM[1] : "0" }
+        }
+      }
+    }
+    abstractNums[am[1]] = levels
+  }
+
+  // numId → abstractNumId マッピング
+  const numRegex = /<w:num w:numId="(\d+)"[^>]*>[\s\S]*?<w:abstractNumId w:val="(\d+)"\/>/g
+  let nm
+  while ((nm = numRegex.exec(numbXml)) !== null) {
+    const absLevels = abstractNums[nm[2]]
+    if (absLevels) {
+      for (const [ilvl, ind] of Object.entries(absLevels)) {
+        map[`${nm[1]}_${ilvl}`] = ind
+      }
+    }
+  }
+
+  return map
+}
+
+/**
  * Word文書からナンバリングプロパティ（w:numPr）を除去する
  * テンプレートの番号付きリスト定義が Word で ■ マーカーとしてレンダリングされるのを防止する
- * document.xml と styles.xml の両方から除去する
+ * numbering.xml のインデント定義を読み取り、明示的な w:ind として段落に埋め込むことで
+ * ■マーカーは消しつつインデント構造を保持する
  */
 function stripNumberingProperties(zip: PizZip): void {
+  // 1. numbering.xml からインデントマップを構築（削除前に読む）
+  const numberingFile = zip.file("word/numbering.xml")
+  const indentMap = numberingFile
+    ? buildNumberingIndentMap(numberingFile.asText())
+    : {}
+
+  // 2. document.xml と styles.xml から numPr を除去し、インデントを明示的に設定
   const targets = ["word/document.xml", "word/styles.xml"]
   for (const target of targets) {
     const file = zip.file(target)
     if (!file) continue
     let xml = file.asText()
 
-    // numPr を含む pPr から numPr と ind（hanging indent）を両方除去する
-    // numPr 除去後に ind だけ残るとテキストが右にずれる問題を防止
     xml = xml.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/g, (_match, inner: string) => {
       if (!inner.includes("<w:numPr>") && !inner.includes("<w:numPr/>")) {
-        return _match // numPr がない pPr はそのまま
+        return _match
       }
+
+      // numId と ilvl を取得
+      const numIdMatch = inner.match(/<w:numId w:val="(\d+)"/)
+      const ilvlMatch = inner.match(/<w:ilvl w:val="(\d+)"/)
+      const numId = numIdMatch ? numIdMatch[1] : "0"
+      const ilvl = ilvlMatch ? ilvlMatch[1] : "0"
+
+      // numbering.xml から解決したインデント
+      const resolvedInd = indentMap[`${numId}_${ilvl}`]
+
       // numPr を除去
       let cleaned = inner.replace(/<w:numPr>[\s\S]*?<\/w:numPr>/g, "")
       cleaned = cleaned.replace(/<w:numPr\/>/g, "")
-      // hanging indent を除去（番号リスト用のインデント）
-      cleaned = cleaned.replace(/<w:ind[^>]*w:hanging="[^"]*"[^/]*\/>/g, "")
+
+      // 既存の w:ind を除去（numbering.xml の値で置換するため）
+      cleaned = cleaned.replace(/<w:ind[^/]*\/>/g, "")
+
+      // numbering.xml から解決したインデントを明示的に追加
+      if (resolvedInd) {
+        const indTag = `<w:ind w:left="${resolvedInd.left}" w:hanging="${resolvedInd.hanging}"/>`
+        cleaned = cleaned + indTag
+      }
+
       return `<w:pPr>${cleaned}</w:pPr>`
     })
 
     zip.file(target, xml)
   }
 
-  // numbering.xml 自体も除去（番号定義の参照元をなくす）
-  const numberingFile = zip.file("word/numbering.xml")
+  // 3. numbering.xml を除去
   if (numberingFile) {
     zip.remove("word/numbering.xml")
 
