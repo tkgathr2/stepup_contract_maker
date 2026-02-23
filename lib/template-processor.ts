@@ -111,6 +111,14 @@ export async function processTemplate(
       xmlContent = replaceInXml(xmlContent, placeholder, value)
     }
 
+    // Gotenberg の LibreOffice (v26+) は docGrid type="lines" を Word と異なる行間で
+    // レンダリングするため、type 属性を除去して行間の互換性を確保する
+    // （linePitch はそのまま残す）
+    xmlContent = xmlContent.replace(
+      /<w:docGrid\s+w:type="lines"\s+w:linePitch="(\d+)"\/>/g,
+      '<w:docGrid w:linePitch="$1"/>'
+    )
+
     zip.file(xmlFile, xmlContent)
   }
 
