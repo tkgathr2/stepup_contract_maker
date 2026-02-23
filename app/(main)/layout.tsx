@@ -77,6 +77,8 @@ export default function MainLayout({
                 <>
                   <div className="hidden sm:flex items-center gap-2">
                     {session.user.image && (
+                      // next/image の domain 設定が必要になるため、ここは img を許可
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={session.user.image}
                         alt={session.user.name || ""}
