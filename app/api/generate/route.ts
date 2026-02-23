@@ -93,12 +93,16 @@ export async function POST(request: NextRequest) {
 
     // テンプレートにデータを埋め込む
     logAction(userId, email, name, "テンプレート読み込み", "開始")
-    const docxBuffer = await processTemplate(template, {
+    const templateData = {
       companyName,
       postalCode,
       address,
       representativeName,
-    })
+    }
+    // PDF変換用（レイアウト最適化あり）
+    const docxBuffer = await processTemplate(template, templateData)
+    // Word DL用（レイアウト最適化なし — keepNextの■マーカーを防止）
+    const wordBuffer = await processTemplate(template, templateData, { skipLayoutOptimization: true })
     logAction(userId, email, name, "テンプレート読み込み", "成功")
 
     // プレビューモードの場合
@@ -127,7 +131,7 @@ export async function POST(request: NextRequest) {
         representativeName,
         pdfPath: `/api/pdf/PLACEHOLDER`,
         pdfData: pdfBuffer,
-        docxData: docxBuffer,
+        docxData: wordBuffer,
       },
     })
 

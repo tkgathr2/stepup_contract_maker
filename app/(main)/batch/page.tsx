@@ -163,6 +163,14 @@ export default function BatchPage() {
     })
   }
 
+  const handleDownloadAllWord = () => {
+    generatedPdfs.forEach((pdf, index) => {
+      setTimeout(() => {
+        handleDownloadWord(pdf)
+      }, index * 500)
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -236,9 +244,15 @@ export default function BatchPage() {
                   <Button
                     onClick={handleDownloadAll}
                     className="w-full"
+                  >
+                    すべてPDFでダウンロード（{generatedPdfs.length}件）
+                  </Button>
+                  <Button
+                    onClick={handleDownloadAllWord}
+                    className="w-full"
                     variant="outline"
                   >
-                    すべてダウンロード（{generatedPdfs.length}件）
+                    すべてWordでダウンロード（{generatedPdfs.length}件）
                   </Button>
                   <div className="space-y-2 max-h-[500px] overflow-y-auto">
                     {generatedPdfs.map((pdf) => (
