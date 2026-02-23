@@ -4,9 +4,14 @@ FROM gotenberg/gotenberg:8
 
 USER root
 
-# 日本語フォントをインストール + Noto Serif（Century代替）
+# 中国語フォント（WenQuanYi）を完全削除 — ベースイメージに含まれている
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+    apt-get remove -y --purge fonts-wqy-zenhei fonts-wqy-microhei 2>/dev/null || true && \
+    rm -rf /usr/share/fonts/truetype/wqy 2>/dev/null || true && \
+    rm -rf /usr/share/fonts/opentype/wqy 2>/dev/null || true
+
+# 日本語フォントをインストール + Noto Serif（Century代替）
+RUN apt-get install -y --no-install-recommends \
       fonts-noto-cjk \
       fonts-noto-cjk-extra \
       fonts-ipafont-gothic \
@@ -15,8 +20,27 @@ RUN apt-get update && \
       locales && \
     sed -i '/ja_JP.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen ja_JP.UTF-8 && \
-    fc-cache -f -v && \
     rm -rf /var/lib/apt/lists/*
+
+# fontconfig: 中国語CJKフォントの優先度を下げ、日本語CJKを最優先にする
+# Noto Sans CJK SC/TC のconfを無効化し、JP のみ有効にする
+RUN rm -f /etc/fonts/conf.d/70-fonts-noto-cjk.conf 2>/dev/null || true && \
+    rm -f /etc/fonts/conf.d/56-fonts-noto-cjk*.conf 2>/dev/null || true
+
+# カスタムfontconfig: 全CJKリクエストをJP優先にする
+RUN echo '<?xml version="1.0"?>' > /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf && \
+    echo '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' >> /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf && \
+    echo '<fontconfig>' >> /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf && \
+    echo '  <alias><family>Noto Sans CJK SC</family><prefer><family>Noto Sans CJK JP</family></prefer></alias>' >> /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf && \
+    echo '  <alias><family>Noto Sans CJK TC</family><prefer><family>Noto Sans CJK JP</family></prefer></alias>' >> /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf && \
+    echo '  <alias><family>Noto Sans CJK KR</family><prefer><family>Noto Sans CJK JP</family></prefer></alias>' >> /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf && \
+    echo '  <alias><family>Noto Serif CJK SC</family><prefer><family>Noto Serif CJK JP</family></prefer></alias>' >> /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf && \
+    echo '  <alias><family>Noto Serif CJK TC</family><prefer><family>Noto Serif CJK JP</family></prefer></alias>' >> /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf && \
+    echo '  <alias><family>Noto Serif CJK KR</family><prefer><family>Noto Serif CJK JP</family></prefer></alias>' >> /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf && \
+    echo '</fontconfig>' >> /etc/fonts/conf.d/50-noto-cjk-jp-priority.conf
+
+# フォントキャッシュを再構築（WenQuanYi削除 + CJK JP優先を反映）
+RUN fc-cache -f -v
 
 # fontconfig: Windows日本語フォント → インストール済み日本語フォントへ置換
 COPY 99-japanese-fonts.conf /etc/fonts/conf.d/99-japanese-fonts.conf
