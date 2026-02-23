@@ -1,96 +1,67 @@
-import puppeteer from "puppeteer-core"
-import chromium from "@sparticuz/chromium"
 import mammoth from "mammoth"
-import { execSync } from "child_process"
+import path from "path"
+import { JSDOM } from "jsdom"
+import htmlToPdfmake from "html-to-pdfmake"
+import PdfPrinter from "pdfmake/src/Printer"
 
 /**
- * Chromium が必要とする共有ライブラリのパスを動的に検出し、
- * LD_LIBRARY_PATH に追加する（nixpacks 環境では標準パスにないため）
+ * pdfmake 用フォント定義（日本語対応: Noto Sans JP）
+ * public/fonts/NotoSansJP-Variable.ttf を使用
  */
-function ensureLibraryPaths(): void {
-  if (process.env.__CHROMIUM_LDPATH_SET === "1") return
-
-  const markers = ["libnspr4.so", "libnss3.so", "libgbm.so.1"]
-  const dirs = new Set<string>()
-
-  for (const lib of markers) {
-    try {
-      const result = execSync(`find /nix /usr /lib -name '${lib}' 2>/dev/null || true`, {
-        encoding: "utf-8",
-        timeout: 5000,
-      }).trim()
-      for (const line of result.split("\n")) {
-        if (line) {
-          const dir = line.substring(0, line.lastIndexOf("/"))
-          if (dir) dirs.add(dir)
-        }
-      }
-    } catch {
-      // ignore
-    }
+function createPrinter(): PdfPrinter {
+  const fontPath = path.join(process.cwd(), "public", "fonts")
+  const fonts = {
+    NotoSansJP: {
+      normal: path.join(fontPath, "NotoSansJP-Variable.ttf"),
+      bold: path.join(fontPath, "NotoSansJP-Variable.ttf"),
+      italics: path.join(fontPath, "NotoSansJP-Variable.ttf"),
+      bolditalics: path.join(fontPath, "NotoSansJP-Variable.ttf"),
+    },
   }
-
-  if (dirs.size > 0) {
-    const existing = process.env.LD_LIBRARY_PATH || ""
-    const newPath = [...dirs, ...existing.split(":").filter(Boolean)].join(":")
-    process.env.LD_LIBRARY_PATH = newPath
-    console.log(`[RAKURAKU] LD_LIBRARY_PATH set to: ${newPath}`)
-  }
-
-  process.env.__CHROMIUM_LDPATH_SET = "1"
-}
-
-// @sparticuz/chromium はコンテナ環境向けに最適化された Chromium バイナリを同梱
-async function getPuppeteerLaunchOptions() {
-  ensureLibraryPaths()
-  return {
-    headless: true as const,
-    executablePath: await chromium.executablePath(),
-    args: chromium.args,
-  }
-}
-
-const PDF_STYLE = `
-  @page { size: A4; margin: 20mm; }
-  body {
-    font-family: "Noto Sans CJK JP", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
-    font-size: 12pt; line-height: 1.6; color: #333;
-  }
-  h1, h2, h3 { color: #222; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #ccc; padding: 8px; }
-  p { margin: 0.5em 0; }
-`
-
-function buildHtml(htmlContent: string): string {
-  return `<!DOCTYPE html>
-<html lang="ja">
-<head><meta charset="UTF-8"><style>${PDF_STYLE}</style></head>
-<body>${htmlContent}</body>
-</html>`
+  return new PdfPrinter(fonts)
 }
 
 /**
  * Word バッファを PDF バッファに変換する（DB保存用）
+ * pdfmake を使用 — Chromium 不要、純粋な JavaScript で動作
  */
 export async function generatePDFBuffer(docxBuffer: Buffer): Promise<Buffer> {
   const result = await mammoth.convertToHtml({ buffer: docxBuffer })
-  const fullHtml = buildHtml(result.value)
 
-  const launchOptions = await getPuppeteerLaunchOptions()
-  const browser = await puppeteer.launch(launchOptions)
-  try {
-    const page = await browser.newPage()
-    await page.setContent(fullHtml, { waitUntil: "networkidle0" })
-    const pdfUint8 = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "20mm", right: "20mm", bottom: "20mm", left: "20mm" },
-    })
-    return Buffer.from(pdfUint8)
-  } finally {
-    await browser.close()
+  // HTML を pdfmake ドキュメント定義に変換
+  const { window } = new JSDOM("")
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdfContent = htmlToPdfmake(result.value, { window: window as any })
+
+  const docDefinition = {
+    content: pdfContent,
+    defaultStyle: {
+      font: "NotoSansJP",
+      fontSize: 11,
+      lineHeight: 1.5,
+    },
+    styles: {
+      "html-h1": { fontSize: 22, bold: true, marginBottom: 8 },
+      "html-h2": { fontSize: 18, bold: true, marginBottom: 6 },
+      "html-h3": { fontSize: 14, bold: true, marginBottom: 4 },
+      "html-p": { marginBottom: 4 },
+      "html-table": { marginBottom: 8 },
+      "html-th": { bold: true, fillColor: "#f0f0f0" },
+    },
+    pageSize: "A4" as const,
+    pageMargins: [57, 57, 57, 57] as [number, number, number, number], // ~20mm
   }
+
+  const printer = createPrinter()
+  const pdfDoc = printer.createPdfKitDocument(docDefinition)
+
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+    pdfDoc.on("data", (chunk: Uint8Array) => chunks.push(chunk))
+    pdfDoc.on("end", () => resolve(Buffer.concat(chunks)))
+    pdfDoc.on("error", (err: Error) => reject(err))
+    pdfDoc.end()
+  })
 }
 
 /**
