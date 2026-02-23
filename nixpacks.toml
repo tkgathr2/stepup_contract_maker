@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "libreoffice"]
+nixPkgs = ["nodejs_20", "libreoffice", "noto-fonts-cjk-sans"]
 
 [phases.install]
 cmds = ["npm ci"]
