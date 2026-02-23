@@ -1,68 +1,74 @@
-import mammoth from "mammoth"
-import path from "path"
-import { JSDOM } from "jsdom"
-import htmlToPdfmake from "html-to-pdfmake"
-import PdfPrinter from "pdfmake/src/Printer"
+import { execFile } from "child_process"
+import { promisify } from "util"
+import * as fs from "fs"
+import * as path from "path"
+import * as os from "os"
+
+const execFileAsync = promisify(execFile)
 
 /**
- * pdfmake 用フォント定義（日本語対応: Noto Sans JP）
- * public/fonts/NotoSansJP-Variable.ttf を使用
+ * LibreOffice のパスを検出する
  */
-function createPrinter(): PdfPrinter {
-  const fontPath = path.join(process.cwd(), "public", "fonts")
-  const fonts = {
-    NotoSansJP: {
-      normal: path.join(fontPath, "NotoSansJP-Variable.ttf"),
-      bold: path.join(fontPath, "NotoSansJP-Variable.ttf"),
-      italics: path.join(fontPath, "NotoSansJP-Variable.ttf"),
-      bolditalics: path.join(fontPath, "NotoSansJP-Variable.ttf"),
-    },
+function findLibreOfficePath(): string {
+  const candidates = [
+    "/usr/bin/libreoffice",
+    "/usr/bin/soffice",
+    "/nix/var/nix/profiles/default/bin/libreoffice",
+    "/nix/var/nix/profiles/default/bin/soffice",
+  ]
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p
   }
-  return new PdfPrinter(fonts)
+  // PATH から探す
+  return "libreoffice"
 }
 
 /**
  * Word バッファを PDF バッファに変換する（DB保存用）
- * pdfmake を使用 — Chromium 不要、純粋な JavaScript で動作
+ * LibreOffice headless を使用 — 元の Word レイアウトを完全に再現
  */
 export async function generatePDFBuffer(docxBuffer: Buffer): Promise<Buffer> {
-  const result = await mammoth.convertToHtml({ buffer: docxBuffer })
+  // 一時ディレクトリを作成
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docx2pdf-"))
+  const docxPath = path.join(tmpDir, "input.docx")
+  const pdfPath = path.join(tmpDir, "input.pdf")
 
-  // HTML を pdfmake ドキュメント定義に変換
-  const { window } = new JSDOM("")
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfContent = htmlToPdfmake(result.value, { window: window as any })
+  try {
+    // docx を一時ファイルに書き込み
+    fs.writeFileSync(docxPath, docxBuffer)
 
-  const docDefinition = {
-    content: pdfContent,
-    defaultStyle: {
-      font: "NotoSansJP",
-      fontSize: 11,
-      lineHeight: 1.5,
-    },
-    styles: {
-      "html-h1": { fontSize: 22, bold: true, marginBottom: 8 },
-      "html-h2": { fontSize: 18, bold: true, marginBottom: 6 },
-      "html-h3": { fontSize: 14, bold: true, marginBottom: 4 },
-      "html-p": { marginBottom: 4 },
-      "html-table": { marginBottom: 8 },
-      "html-th": { bold: true, fillColor: "#f0f0f0" },
-    },
-    pageSize: "A4" as const,
-    pageMargins: [57, 57, 57, 57] as [number, number, number, number], // ~20mm
+    // LibreOffice headless で PDF に変換
+    const soffice = findLibreOfficePath()
+    await execFileAsync(soffice, [
+      "--headless",
+      "--norestore",
+      "--convert-to", "pdf",
+      "--outdir", tmpDir,
+      docxPath,
+    ], {
+      timeout: 60000, // 60秒タイムアウト
+      env: {
+        ...process.env,
+        HOME: tmpDir, // LibreOffice のプロファイルディレクトリ競合を回避
+      },
+    })
+
+    // 生成された PDF を読み込み
+    if (!fs.existsSync(pdfPath)) {
+      throw new Error("LibreOffice による PDF 変換に失敗しました")
+    }
+
+    return fs.readFileSync(pdfPath)
+  } finally {
+    // 一時ファイルをクリーンアップ
+    try {
+      if (fs.existsSync(docxPath)) fs.unlinkSync(docxPath)
+      if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath)
+      fs.rmdirSync(tmpDir)
+    } catch {
+      // クリーンアップ失敗は無視
+    }
   }
-
-  const printer = createPrinter()
-  // pdfmake v0.2+ では createPdfKitDocument が Promise を返す
-  const pdfDoc = await printer.createPdfKitDocument(docDefinition)
-
-  return new Promise<Buffer>((resolve, reject) => {
-    const chunks: Uint8Array[] = []
-    pdfDoc.on("data", (chunk: Uint8Array) => chunks.push(chunk))
-    pdfDoc.on("end", () => resolve(Buffer.concat(chunks)))
-    pdfDoc.on("error", (err: Error) => reject(err))
-    pdfDoc.end()
-  })
 }
 
 /**
