@@ -53,7 +53,8 @@ export async function generatePDFBuffer(docxBuffer: Buffer): Promise<Buffer> {
   }
 
   const printer = createPrinter()
-  const pdfDoc = printer.createPdfKitDocument(docDefinition)
+  // pdfmake v0.2+ では createPdfKitDocument が Promise を返す
+  const pdfDoc = await printer.createPdfKitDocument(docDefinition)
 
   return new Promise<Buffer>((resolve, reject) => {
     const chunks: Uint8Array[] = []
