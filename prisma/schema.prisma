@@ -30,6 +30,23 @@ model Template {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   histories GenerationHistory[]
+  versions  TemplateVersion[]
+}
+
+model TemplateVersion {
+  id         String   @id @default(uuid())
+  templateId String
+  version    Int      // バージョン番号（1, 2, 3...）
+  name       String   // その時点のテンプレート名
+  fileData   Bytes    // その時点のファイルデータ
+  editedById String   // 編集したユーザーID
+  editedBy   String   // 編集したユーザー名
+  comment    String?  // 変更コメント（任意）
+  createdAt  DateTime @default(now())
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, version])
+  @@index([templateId])
 }
 
 model GenerationHistory {
