@@ -232,6 +232,14 @@ export default function GeneratePage() {
     }
   }
 
+  const handleDownloadAllWord = () => {
+    generatedPdfs.forEach((pdf, index) => {
+      setTimeout(() => {
+        handleDownloadWord(pdf)
+      }, index * 500)
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -299,9 +307,14 @@ export default function GeneratePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {generatedPdfs.length > 1 && (
-                  <Button onClick={handleDownloadAll} className="w-full">
-                    すべてダウンロード（{generatedPdfs.length}件）
-                  </Button>
+                  <div className="space-y-2">
+                    <Button onClick={handleDownloadAll} className="w-full">
+                      すべてPDFでダウンロード（{generatedPdfs.length}件）
+                    </Button>
+                    <Button onClick={handleDownloadAllWord} className="w-full" variant="outline">
+                      すべてWordでダウンロード（{generatedPdfs.length}件）
+                    </Button>
+                  </div>
                 )}
                 {generatedPdfs.map((pdf, index) => (
                   <div key={pdf.historyId} className="space-y-2">

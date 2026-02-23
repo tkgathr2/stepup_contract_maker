@@ -121,12 +121,16 @@ export async function POST(request: NextRequest) {
         const template = templates[ti]
         try {
           // テンプレートにデータを埋め込む
-          const docxBuffer = await processTemplate(template, {
+          const templateData = {
             companyName: company.companyName,
             postalCode: company.postalCode,
             address: company.address,
             representativeName: company.representativeName,
-          })
+          }
+          // PDF変換用（レイアウト最適化あり）
+          const docxBuffer = await processTemplate(template, templateData)
+          // Word DL用（レイアウト最適化なし — keepNextの■マーカーを防止）
+          const wordBuffer = await processTemplate(template, templateData, { skipLayoutOptimization: true })
 
           // PDFを生成（バッファとしてDBに保存）
           const pdfBuffer = await generatePDFBuffer(docxBuffer)
@@ -141,7 +145,7 @@ export async function POST(request: NextRequest) {
               representativeName: company.representativeName,
               pdfPath: `/api/pdf/PLACEHOLDER`,
               pdfData: pdfBuffer,
-              docxData: docxBuffer,
+              docxData: wordBuffer,
             },
           })
 

@@ -218,15 +218,22 @@ function removeConsecutiveEmptyParagraphs(xml: string): string {
   return result
 }
 
+export interface ProcessTemplateOptions {
+  /** true の場合、PDF変換向けレイアウト最適化（keepNext, spacing圧縮, マージン縮小, 空段落削除）をスキップする */
+  skipLayoutOptimization?: boolean
+}
+
 /**
  * Wordテンプレートにデータを埋め込む（【】形式プレースホルダー対応）
  * @param template DB テンプレート行（filePath + fileData）
  * @param data 埋め込むデータ
+ * @param options オプション（skipLayoutOptimization: Word DL用にレイアウト最適化をスキップ）
  * @returns 埋め込み後のWordファイルのBuffer
  */
 export async function processTemplate(
   template: TemplateRecord,
-  data: TemplateData
+  data: TemplateData,
+  options?: ProcessTemplateOptions
 ): Promise<Buffer> {
   const content = loadTemplateContent(template)
   const zip = new PizZip(content)
@@ -273,7 +280,8 @@ export async function processTemplate(
     xmlContent = xmlContent.replace(/w:eastAsia="zh-TW"/g, 'w:eastAsia="ja-JP"')
 
     // document.xml のみ: レイアウト最適化（全テンプレート共通）
-    if (xmlFile === "word/document.xml") {
+    // Word DL用の場合はスキップ（keepNextの■マーカーやspacing変更が不要）
+    if (xmlFile === "word/document.xml" && !options?.skipLayoutOptimization) {
       // 1. 連続する空段落を圧縮（2つ以上→1つ）
       xmlContent = removeConsecutiveEmptyParagraphs(xmlContent)
 
