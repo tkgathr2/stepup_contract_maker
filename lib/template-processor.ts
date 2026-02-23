@@ -240,6 +240,22 @@ function stripNumberingProperties(zip: PizZip): void {
   const numberingFile = zip.file("word/numbering.xml")
   if (numberingFile) {
     zip.remove("word/numbering.xml")
+
+    // [Content_Types].xml から numbering.xml の参照を除去（Word修復ダイアログ防止）
+    const ctFile = zip.file("[Content_Types].xml")
+    if (ctFile) {
+      let ct = ctFile.asText()
+      ct = ct.replace(/<Override[^>]*PartName="\/word\/numbering\.xml"[^>]*\/>/g, "")
+      zip.file("[Content_Types].xml", ct)
+    }
+
+    // word/_rels/document.xml.rels から numbering.xml の参照を除去
+    const relsFile = zip.file("word/_rels/document.xml.rels")
+    if (relsFile) {
+      let rels = relsFile.asText()
+      rels = rels.replace(/<Relationship[^>]*Target="numbering\.xml"[^>]*\/>/g, "")
+      zip.file("word/_rels/document.xml.rels", rels)
+    }
   }
 }
 
