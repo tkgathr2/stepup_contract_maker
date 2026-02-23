@@ -1,28 +1,75 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import BatchForm, { CompanyData } from "@/components/forms/BatchForm"
-import TemplateSelector from "@/components/templates/TemplateSelector"
 import { toast } from "sonner"
+
+interface Template {
+  id: string
+  name: string
+  type: string
+}
 
 interface GeneratedPDF {
   pdfUrl: string
   companyName: string
+  templateName: string
+  templateType: string
   historyId: string
 }
 
 export default function BatchPage() {
-  const [templateId, setTemplateId] = useState("")
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set())
+  const [loadingTemplates, setLoadingTemplates] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const submittingRef = useRef(false)
   const [generatedPdfs, setGeneratedPdfs] = useState<GeneratedPDF[]>([])
   const [failedCount, setFailedCount] = useState(0)
 
+  // テンプレート一覧を取得し、全てデフォルトでONにする
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const response = await fetch("/api/templates")
+        if (response.ok) {
+          const data = await response.json()
+          const tpls: Template[] = data.templates
+          setTemplates(tpls)
+          setSelectedTemplateIds(new Set(tpls.map((t) => t.id)))
+        }
+      } catch (error) {
+        console.error("Failed to fetch templates:", error)
+      } finally {
+        setLoadingTemplates(false)
+      }
+    }
+    fetchTemplates()
+  }, [])
+
+  const getTypeLabel = (type: string) => {
+    return type === "contract" ? "契約書" : "送り状"
+  }
+
+  const toggleTemplate = (templateId: string) => {
+    setSelectedTemplateIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(templateId)) {
+        next.delete(templateId)
+      } else {
+        next.add(templateId)
+      }
+      return next
+    })
+  }
+
   const handleGenerate = async (companies: CompanyData[]) => {
-    if (!templateId) {
-      toast.error("テンプレートを選択してください")
+    if (selectedTemplateIds.size === 0) {
+      toast.error("テンプレートを1つ以上選択してください")
       return
     }
 
@@ -40,7 +87,7 @@ export default function BatchPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          templateId,
+          templateIds: Array.from(selectedTemplateIds),
           companies,
         }),
       })
@@ -67,18 +114,31 @@ export default function BatchPage() {
     }
   }
 
-  const handleDownload= (pdfUrl: string, companyName: string) => {
-    const link = document.createElement("a")
-    link.href = pdfUrl
-    link.download = `${companyName}.pdf`
-    link.click()
+  const handleDownload = (pdf: GeneratedPDF) => {
+    const now = new Date()
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`
+    const fileName = `${dateStr}_${pdf.companyName}_${pdf.templateName}.pdf`
+    fetch(pdf.pdfUrl, { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error("ダウンロードに失敗しました")
+        return res.blob()
+      })
+      .then((blob) => {
+        const blobUrl = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = blobUrl
+        link.download = fileName
+        link.click()
+        URL.revokeObjectURL(blobUrl)
+      })
+      .catch(() => toast.error("PDFのダウンロードに失敗しました"))
   }
 
   const handleDownloadAll = () => {
     generatedPdfs.forEach((pdf, index) => {
       setTimeout(() => {
-        handleDownload(pdf.pdfUrl, pdf.companyName)
-      }, index * 500) // 0.5秒ずつずらしてダウンロード
+        handleDownload(pdf)
+      }, index * 500)
     })
   }
 
@@ -97,15 +157,36 @@ export default function BatchPage() {
             <CardHeader>
               <CardTitle>テンプレート選択</CardTitle>
               <CardDescription>
-                使用するテンプレートを選択してください
+                生成するテンプレートを選択してください（複数選択可）
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TemplateSelector
-                value={templateId}
-                onChange={setTemplateId}
-                disabled={isLoading}
-              />
+              {loadingTemplates ? (
+                <p className="text-sm text-muted-foreground">読み込み中...</p>
+              ) : templates.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  テンプレートがありません。テンプレート管理ページからアップロードしてください。
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {templates.map((template) => (
+                    <div key={template.id} className="flex items-center space-x-3">
+                      <Checkbox
+                        id={`batch-template-${template.id}`}
+                        checked={selectedTemplateIds.has(template.id)}
+                        onCheckedChange={() => toggleTemplate(template.id)}
+                        disabled={isLoading}
+                      />
+                      <Label
+                        htmlFor={`batch-template-${template.id}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {template.name}（{getTypeLabel(template.type)}）
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -136,7 +217,7 @@ export default function BatchPage() {
                     className="w-full"
                     variant="outline"
                   >
-                    すべてダウンロード
+                    すべてダウンロード（{generatedPdfs.length}件）
                   </Button>
                   <div className="space-y-2 max-h-[500px] overflow-y-auto">
                     {generatedPdfs.map((pdf) => (
@@ -147,12 +228,12 @@ export default function BatchPage() {
                         <div>
                           <p className="font-medium">{pdf.companyName}</p>
                           <p className="text-xs text-muted-foreground">
-                            {pdf.pdfUrl}
+                            {pdf.templateName}（{getTypeLabel(pdf.templateType)}）
                           </p>
                         </div>
                         <Button
                           size="sm"
-                          onClick={() => handleDownload(pdf.pdfUrl, pdf.companyName)}
+                          onClick={() => handleDownload(pdf)}
                         >
                           ダウンロード
                         </Button>
