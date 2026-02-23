@@ -119,6 +119,12 @@ export async function processTemplate(
       '<w:docGrid w:linePitch="$1"/>'
     )
 
+    // Word テンプレートの言語属性 zh-CN / zh-TW を ja-JP に修正
+    // これにより LibreOffice が中国語フォント（WenQuanYi, NotoSansCJKsc）ではなく
+    // 日本語フォント（IPAGothic, NotoSansCJKjp）を選択する
+    xmlContent = xmlContent.replace(/w:eastAsia="zh-CN"/g, 'w:eastAsia="ja-JP"')
+    xmlContent = xmlContent.replace(/w:eastAsia="zh-TW"/g, 'w:eastAsia="ja-JP"')
+
     zip.file(xmlFile, xmlContent)
   }
 
