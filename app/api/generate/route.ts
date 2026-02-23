@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { companyName, address, representativeName, templateId, preview } = body
+    const { companyName, postalCode, address, representativeName, templateId, preview } = body
 
     // バリデーション
     if (!companyName || typeof companyName !== "string") {
@@ -35,6 +35,13 @@ export async function POST(request: NextRequest) {
         field: "companyName",
         reason: "too_long",
         maxLength: 100,
+      })
+    }
+
+    if (!postalCode || typeof postalCode !== "string") {
+      return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+        field: "postalCode",
+        reason: "required",
       })
     }
 
@@ -88,6 +95,7 @@ export async function POST(request: NextRequest) {
     logAction(userId, email, name, "テンプレート読み込み", "開始")
     const docxBuffer = await processTemplate(template, {
       companyName,
+      postalCode,
       address,
       representativeName,
     })

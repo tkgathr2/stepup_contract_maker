@@ -9,6 +9,7 @@ import { ErrorCode, sendError, handleInternalError, captureInternalError } from 
 
 interface CompanyData {
   companyName: string
+  postalCode: string
   address: string
   representativeName: string
 }
@@ -71,6 +72,12 @@ export async function POST(request: NextRequest) {
           field: "companyName",
         })
       }
+      if (!company.postalCode) {
+        return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
+          index: i,
+          field: "postalCode",
+        })
+      }
       if (!company.address || company.address.length > 500) {
         return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
           index: i,
@@ -111,6 +118,7 @@ export async function POST(request: NextRequest) {
         // テンプレートにデータを埋め込む
         const docxBuffer = await processTemplate(template, {
           companyName: company.companyName,
+          postalCode: company.postalCode,
           address: company.address,
           representativeName: company.representativeName,
         })
