@@ -192,10 +192,18 @@ async function syncTemplatesToDB() {
 
   const prisma = new PrismaClient()
   try {
+    // テンプレートが1つでも存在すれば、同期をスキップ（重複防止）
+    const existingCount = await prisma.template.count()
+    if (existingCount > 0) {
+      console.log(`DB に ${existingCount} 件のテンプレートが存在します。同期をスキップします。`)
+      return
+    }
+
+    console.log("DB にテンプレートが存在しません。初期テンプレートを作成します。")
     const templatesDir = path.join(__dirname, "..", "templates")
     const files = [
       { name: "契約書テンプレート", type: "contract", file: "contract_template.docx" },
-      { name: "送り状テンプレート", type: "invoice", file: "invoice_template.docx" },
+      { name: "送付状テンプレート", type: "invoice", file: "invoice_template.docx" },
     ]
 
     for (const tpl of files) {
@@ -205,20 +213,10 @@ async function syncTemplatesToDB() {
       const fileData = fs.readFileSync(filePath)
       const dbPath = `/templates/${tpl.file}`
 
-      // 既存テンプレートがあれば fileData を更新、なければ作成
-      const existing = await prisma.template.findFirst({ where: { filePath: dbPath } })
-      if (existing) {
-        await prisma.template.update({
-          where: { id: existing.id },
-          data: { fileData },
-        })
-        console.log(`DB更新: ${tpl.name} (fileData同期)`)
-      } else {
-        await prisma.template.create({
-          data: { name: tpl.name, type: tpl.type, filePath: dbPath, fileData },
-        })
-        console.log(`DB作成: ${tpl.name}`)
-      }
+      await prisma.template.create({
+        data: { name: tpl.name, type: tpl.type, filePath: dbPath, fileData },
+      })
+      console.log(`DB作成: ${tpl.name}`)
     }
   } finally {
     await prisma.$disconnect()
