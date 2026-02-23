@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
           // PDFを生成（バッファとしてDBに保存）
           const pdfBuffer = await generatePDFBuffer(docxBuffer)
 
-          // 履歴を保存（PDF実体をDBに格納）
+          // 履歴を保存（PDF実体とWord実体をDBに格納）
           const history = await db.generationHistory.create({
             data: {
               userId,
@@ -141,6 +141,7 @@ export async function POST(request: NextRequest) {
               representativeName: company.representativeName,
               pdfPath: `/api/pdf/PLACEHOLDER`,
               pdfData: pdfBuffer,
+              docxData: docxBuffer,
             },
           })
 
