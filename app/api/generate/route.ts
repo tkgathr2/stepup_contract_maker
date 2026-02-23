@@ -154,6 +154,10 @@ export async function POST(request: NextRequest) {
       captureInternalError(error, "generate")
       return sendError(500, ErrorCode.INTERNAL_ERROR, "PDF変換エンジンが利用できません。管理者にお問い合わせください。")
     }
+    if (msg.includes("LibreOffice") || msg.includes("libreoffice") || msg.includes("soffice")) {
+      captureInternalError(error, "generate")
+      return sendError(500, ErrorCode.INTERNAL_ERROR, "PDF変換エンジン（LibreOffice）でエラーが発生しました。管理者にお問い合わせください。")
+    }
     return handleInternalError(error, "generate")
   }
 }
