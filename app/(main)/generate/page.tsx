@@ -205,6 +205,27 @@ export default function GeneratePage() {
     }
   }
 
+  const handleDownloadWord = (pdf: GeneratedPdf) => {
+    const now = new Date()
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`
+    const fileName = `${dateStr}_${pdf.companyName}_${pdf.templateName}.docx`
+    const docxUrl = pdf.pdfUrl.replace("/api/pdf/", "/api/docx/")
+    fetch(docxUrl, { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error("ダウンロードに失敗しました")
+        return res.blob()
+      })
+      .then((blob) => {
+        const blobUrl = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = blobUrl
+        link.download = fileName
+        link.click()
+        URL.revokeObjectURL(blobUrl)
+      })
+      .catch(() => toast.error("Wordファイルのダウンロードに失敗しました"))
+  }
+
   const handleDownloadAll = () => {
     for (const pdf of generatedPdfs) {
       handleDownloadOne(pdf)
@@ -288,13 +309,22 @@ export default function GeneratePage() {
                       <span className="text-sm font-medium">
                         {pdf.templateName}（{getTypeLabel(pdf.templateType)}）
                       </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownloadOne(pdf)}
-                      >
-                        ダウンロード
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadOne(pdf)}
+                        >
+                          PDF
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadWord(pdf)}
+                        >
+                          Word
+                        </Button>
+                      </div>
                     </div>
                     {pdf.blobUrl && (
                       <div className="border rounded-lg overflow-hidden">

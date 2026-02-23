@@ -58,6 +58,7 @@ model GenerationHistory {
   representativeName String
   pdfPath            String
   pdfData            Bytes?   // PDF実体データ（エフェメラルFS対策）
+  docxData           Bytes?   // Word実体データ（ダウンロード用）
   createdAt          DateTime @default(now())
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   template           Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
