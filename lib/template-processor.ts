@@ -137,36 +137,83 @@ function addKeepNextToEndBlock(xml: string): string {
 
 /**
  * 段落間の過剰な空白を圧縮する（全テンプレート共通）
- * - w:spacing w:after の大きな値を縮小
- * - 連続する空段落（テキストなし）を最大1つに圧縮
- * - w:spacing w:before の大きな値を縮小
+ * - w:spacing w:after / w:before の大きな値を縮小
+ * - ページマージン（上下）を縮小して縦方向の余裕を確保
  */
 function compactSpacing(xml: string): string {
   let result = xml
 
-  // w:spacing w:after="240" 以上の値を "120" に圧縮
+  // w:spacing w:after="240" 以上の値を "80" に圧縮
   result = result.replace(
     /(<w:spacing\s[^/]*?)w:after="(\d+)"([^/]*?\/>)/g,
     (_match, prefix: string, afterVal: string, suffix: string) => {
       const val = parseInt(afterVal, 10)
-      if (val > 160) {
-        return `${prefix}w:after="${Math.min(val, 120)}"${suffix}`
+      if (val > 100) {
+        return `${prefix}w:after="80"${suffix}`
       }
       return `${prefix}w:after="${afterVal}"${suffix}`
     }
   )
 
-  // w:spacing w:before="240" 以上の値を "120" に圧縮
+  // w:spacing w:before="240" 以上の値を "80" に圧縮
   result = result.replace(
     /(<w:spacing\s[^/]*?)w:before="(\d+)"([^/]*?\/>)/g,
     (_match, prefix: string, beforeVal: string, suffix: string) => {
       const val = parseInt(beforeVal, 10)
-      if (val > 160) {
-        return `${prefix}w:before="${Math.min(val, 120)}"${suffix}`
+      if (val > 100) {
+        return `${prefix}w:before="80"${suffix}`
       }
       return `${prefix}w:before="${beforeVal}"${suffix}`
     }
   )
+
+  // ページマージン（上下）を縮小: top 1985→1440 (3.5cm→2.54cm), bottom 1701→1134 (3.0cm→2.0cm)
+  // 左右はそのまま維持
+  result = result.replace(
+    /(<w:pgMar\s[^/]*?)w:top="(\d+)"([^/]*?\/>)/g,
+    (_match, prefix: string, topVal: string, suffix: string) => {
+      const val = parseInt(topVal, 10)
+      if (val > 1440) {
+        return `${prefix}w:top="1440"${suffix}`
+      }
+      return `${prefix}w:top="${topVal}"${suffix}`
+    }
+  )
+  result = result.replace(
+    /(<w:pgMar\s[^/]*?)w:bottom="(\d+)"([^/]*?\/>)/g,
+    (_match, prefix: string, bottomVal: string, suffix: string) => {
+      const val = parseInt(bottomVal, 10)
+      if (val > 1134) {
+        return `${prefix}w:bottom="1134"${suffix}`
+      }
+      return `${prefix}w:bottom="${bottomVal}"${suffix}`
+    }
+  )
+
+  return result
+}
+
+/**
+ * 連続する空段落（テキストなし）を圧縮する
+ * 2つ以上連続する空段落を1つに削減する
+ */
+function removeConsecutiveEmptyParagraphs(xml: string): string {
+  // 空段落 = <w:p> ... </w:p> の中に <w:t> がないもの
+  // 2つ以上連続する空段落を1つに減らす
+  let result = xml
+
+  // パターン: 空段落が2つ以上連続しているケースを検出
+  // 空段落 = w:r(テキスト要素)を含まない <w:p>...</w:p>
+  // 繰り返し適用して3つ→2つ→1つと段階的に削減
+  for (let i = 0; i < 5; i++) {
+    const before = result
+    // 空段落（w:t を含まない w:p）が2つ連続するパターンを1つに削減
+    result = result.replace(
+      /(<w:p\s[^>]*>\s*<w:pPr>(?:(?!<w:t)[\s\S])*?<\/w:pPr>\s*<\/w:p>)\s*(<w:p\s[^>]*>\s*<w:pPr>(?:(?!<w:t)[\s\S])*?<\/w:pPr>\s*<\/w:p>)/g,
+      '$1'
+    )
+    if (result === before) break
+  }
 
   return result
 }
@@ -227,10 +274,13 @@ export async function processTemplate(
 
     // document.xml のみ: レイアウト最適化（全テンプレート共通）
     if (xmlFile === "word/document.xml") {
-      // 1. 段落間スペースを圧縮して前に詰める
+      // 1. 連続する空段落を圧縮（2つ以上→1つ）
+      xmlContent = removeConsecutiveEmptyParagraphs(xmlContent)
+
+      // 2. 段落間スペース・ページマージンを圧縮して前に詰める
       xmlContent = compactSpacing(xmlContent)
 
-      // 2. 末尾の署名ブロックに keepNext を追加してページ分割を防止
+      // 3. 末尾の署名ブロックに keepNext を追加してページ分割を防止
       xmlContent = addKeepNextToEndBlock(xmlContent)
     }
 
