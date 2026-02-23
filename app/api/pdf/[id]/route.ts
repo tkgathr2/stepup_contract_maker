@@ -24,6 +24,10 @@ export async function GET(
         pdfData: true,
         companyName: true,
         userId: true,
+        createdAt: true,
+        template: {
+          select: { name: true },
+        },
       },
     })
 
@@ -40,7 +44,11 @@ export async function GET(
       return sendError(404, ErrorCode.NOT_FOUND, "PDFデータが保存されていません。再生成してください。")
     }
 
-    const fileName = `${history.companyName}.pdf`
+    // ファイル名: テンプレート名_会社名_YYYYMMDD.pdf
+    const d = history.createdAt
+    const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`
+    const templateName = history.template.name
+    const fileName = `${templateName}_${history.companyName}_${dateStr}.pdf`
     const pdfBytes = new Uint8Array(history.pdfData)
 
     return new NextResponse(pdfBytes, {
