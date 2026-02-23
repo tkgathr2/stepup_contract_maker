@@ -75,11 +75,24 @@ export default function HistoryPage() {
     fetchHistories()
   }
 
-  const handleDownload = (pdfUrl: string, companyName: string) => {
-    const link = document.createElement("a")
-    link.href = pdfUrl
-    link.download = `${companyName}.pdf`
-    link.click()
+  const handleDownload = (history: History) => {
+    const d = new Date(history.createdAt)
+    const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`
+    const fileName = `${history.templateName}_${history.companyName}_${dateStr}.pdf`
+    fetch(history.pdfUrl, { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error("ダウンロードに失敗しました")
+        return res.blob()
+      })
+      .then((blob) => {
+        const blobUrl = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = blobUrl
+        link.download = fileName
+        link.click()
+        URL.revokeObjectURL(blobUrl)
+      })
+      .catch(() => toast.error("PDFのダウンロードに失敗しました"))
   }
 
   const formatDate = (dateString: string) => {
@@ -205,7 +218,7 @@ export default function HistoryPage() {
                           <Button
                             size="sm"
                             onClick={() =>
-                              handleDownload(history.pdfUrl, history.companyName)
+                              handleDownload(history)
                             }
                           >
                             ダウンロード

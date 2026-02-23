@@ -17,6 +17,7 @@ interface Template {
 interface GeneratedPdf {
   templateName: string
   templateType: string
+  companyName: string
   pdfUrl: string
   blobUrl: string | null
   historyId: string
@@ -120,6 +121,7 @@ export default function GeneratePage() {
         results.push({
           templateName: template.name,
           templateType: template.type,
+          companyName: data.companyName,
           pdfUrl: result.pdfUrl,
           blobUrl,
           historyId: result.historyId,
@@ -177,7 +179,9 @@ export default function GeneratePage() {
   }
 
   const handleDownloadOne = (pdf: GeneratedPdf) => {
-    const fileName = `${pdf.templateName}.pdf`
+    const now = new Date()
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`
+    const fileName = `${pdf.templateName}_${pdf.companyName}_${dateStr}.pdf`
     if (pdf.blobUrl) {
       const link = document.createElement("a")
       link.href = pdf.blobUrl
