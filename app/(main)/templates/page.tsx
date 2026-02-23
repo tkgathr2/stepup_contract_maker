@@ -339,6 +339,11 @@ export default function TemplatesPage() {
                     <TableCell>{getTypeLabel(template.type)}</TableCell>
                     <TableCell>{formatDate(template.updatedAt)}</TableCell>
                     <TableCell className="text-right space-x-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={`/api/templates/${template.id}/download`} target="_blank" rel="noopener noreferrer">
+                          DL
+                        </a>
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -518,17 +523,32 @@ export default function TemplatesPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
+            <p className="text-muted-foreground mb-3">
+              テンプレート内で以下のプレースホルダーを使用すると、PDF生成時に自動で置換されます。
+            </p>
             <div className="flex gap-4">
-              <code className="bg-muted px-2 py-1 rounded text-sm">{"{companyName}"}</code>
+              <code className="bg-muted px-2 py-1 rounded text-sm font-bold">【会社名】</code>
               <span>会社名</span>
             </div>
             <div className="flex gap-4">
-              <code className="bg-muted px-2 py-1 rounded text-sm">{"{address}"}</code>
+              <code className="bg-muted px-2 py-1 rounded text-sm font-bold">【郵便番号】</code>
+              <span>郵便番号</span>
+            </div>
+            <div className="flex gap-4">
+              <code className="bg-muted px-2 py-1 rounded text-sm font-bold">【住所】</code>
               <span>住所</span>
             </div>
             <div className="flex gap-4">
-              <code className="bg-muted px-2 py-1 rounded text-sm">{"{representativeName}"}</code>
-              <span>代表者名</span>
+              <code className="bg-muted px-2 py-1 rounded text-sm font-bold">【氏名】</code>
+              <span>氏名（代表者名）</span>
+            </div>
+            <div className="flex gap-4">
+              <code className="bg-muted px-2 py-1 rounded text-sm font-bold">【今日の日付け】</code>
+              <span>本日の日付（令和○年○月○日）</span>
+            </div>
+            <div className="flex gap-4">
+              <code className="bg-muted px-2 py-1 rounded text-sm font-bold">【契約書 1部】</code>
+              <span>固定文字列「契約書 1部」</span>
             </div>
           </div>
         </CardContent>

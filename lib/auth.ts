@@ -46,7 +46,7 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async session({ session, token }) {
+    async session({ session }) {
       if (session.user) {
         // データベースからユーザー情報を取得してセッションに追加
         const dbUser = await db.user.findUnique({
