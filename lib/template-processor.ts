@@ -294,17 +294,39 @@ function stripNumberingProperties(zip: PizZip): void {
       // numbering.xml から解決したインデント
       const resolvedInd = indentMap[`${numId}_${ilvl}`]
 
+      // 既存の pPr 内 w:ind 属性を取得（numPr と共存する場合はオーバーライド値）
+      const existingIndMatch = inner.match(/<w:ind([^/]*)\/>/);
+      const existingAttrs: Record<string, string> = {}
+      if (existingIndMatch) {
+        const attrRegex = /w:(\w+)="([^"]*)"/g
+        let attrM
+        while ((attrM = attrRegex.exec(existingIndMatch[1])) !== null) {
+          existingAttrs[attrM[1]] = attrM[2]
+        }
+      }
+
       // numPr を除去
       let cleaned = inner.replace(/<w:numPr>[\s\S]*?<\/w:numPr>/g, "")
       cleaned = cleaned.replace(/<w:numPr\/>/g, "")
 
-      // 既存の w:ind を除去（numbering.xml の値で置換するため）
+      // 既存の w:ind を除去（マージした値で再構築するため）
       cleaned = cleaned.replace(/<w:ind[^/]*\/>/g, "")
 
-      // numbering.xml から解決したインデントを明示的に追加
-      if (resolvedInd) {
-        const indTag = `<w:ind w:left="${resolvedInd.left}" w:hanging="${resolvedInd.hanging}"/>`
-        cleaned = cleaned + indTag
+      // numbering.xml のインデントをベースに、pPr の既存 w:ind でオーバーライドしてマージ
+      // Word の仕様: numPr + pPr w:ind 共存時、pPr の属性が numbering.xml を上書きする
+      if (resolvedInd || Object.keys(existingAttrs).length > 0) {
+        const merged: Record<string, string> = {}
+        // ベース: numbering.xml の値
+        if (resolvedInd) {
+          merged["left"] = resolvedInd.left
+          merged["hanging"] = resolvedInd.hanging
+        }
+        // オーバーライド: pPr の既存 w:ind 属性で上書き
+        for (const [key, val] of Object.entries(existingAttrs)) {
+          merged[key] = val
+        }
+        const attrs = Object.entries(merged).map(([k, v]) => `w:${k}="${v}"`).join(" ")
+        cleaned = cleaned + `<w:ind ${attrs}/>`
       }
 
       return `<w:pPr>${cleaned}</w:pPr>`
