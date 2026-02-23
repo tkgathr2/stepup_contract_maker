@@ -13,6 +13,7 @@ export default function GeneratePage() {
   const [isPreviewing, setIsPreviewing] = useState(false)
   const submittingRef = useRef(false)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null)
   const [previewPdf, setPreviewPdf] = useState<string | null>(null)
 
   const handleGenerate = async (data: CompanyData) => {
@@ -25,6 +26,10 @@ export default function GeneratePage() {
 
     setIsLoading(true)
     setPdfUrl(null)
+    if (pdfBlobUrl) {
+      URL.revokeObjectURL(pdfBlobUrl)
+      setPdfBlobUrl(null)
+    }
 
     try {
       const response = await fetch("/api/generate", {
@@ -45,6 +50,14 @@ export default function GeneratePage() {
       }
 
       setPdfUrl(result.pdfUrl)
+
+      // PDFをfetchしてBlob URLを作成（認証cookie付き）
+      const pdfRes = await fetch(result.pdfUrl, { credentials: "include" })
+      if (pdfRes.ok) {
+        const blob = await pdfRes.blob()
+        setPdfBlobUrl(URL.createObjectURL(blob))
+      }
+
       toast.success("PDFを生成しました")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "エラーが発生しました")
@@ -96,11 +109,27 @@ export default function GeneratePage() {
   }
 
   const handleDownload = () => {
-    if (pdfUrl) {
+    if (pdfBlobUrl) {
       const link = document.createElement("a")
-      link.href = pdfUrl
+      link.href = pdfBlobUrl
       link.download = "generated.pdf"
       link.click()
+    } else if (pdfUrl) {
+      // フォールバック: blob URLがない場合はfetchで取得
+      fetch(pdfUrl, { credentials: "include" })
+        .then(res => {
+          if (!res.ok) throw new Error("ダウンロードに失敗しました")
+          return res.blob()
+        })
+        .then(blob => {
+          const blobUrl = URL.createObjectURL(blob)
+          const link = document.createElement("a")
+          link.href = blobUrl
+          link.download = "generated.pdf"
+          link.click()
+          URL.revokeObjectURL(blobUrl)
+        })
+        .catch(() => toast.error("PDFのダウンロードに失敗しました"))
     }
   }
 
@@ -152,13 +181,15 @@ export default function GeneratePage() {
                 <Button onClick={handleDownload} className="w-full">
                   PDFをダウンロード
                 </Button>
-                <div className="border rounded-lg overflow-hidden">
-                  <iframe
-                    src={pdfUrl}
-                    className="w-full h-[600px]"
-                    title="Generated PDF"
-                  />
-                </div>
+                {pdfBlobUrl && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <iframe
+                      src={pdfBlobUrl}
+                      className="w-full h-[600px]"
+                      title="Generated PDF"
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
