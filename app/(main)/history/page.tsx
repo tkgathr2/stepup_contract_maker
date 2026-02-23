@@ -78,7 +78,7 @@ export default function HistoryPage() {
   const handleDownload = (history: History) => {
     const d = new Date(history.createdAt)
     const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`
-    const fileName = `${history.templateName}_${history.companyName}_${dateStr}.pdf`
+    const fileName = `${dateStr}_${history.companyName}_${history.templateName}.pdf`
     fetch(history.pdfUrl, { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error("ダウンロードに失敗しました")

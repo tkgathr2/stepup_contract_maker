@@ -44,11 +44,11 @@ export async function GET(
       return sendError(404, ErrorCode.NOT_FOUND, "PDFデータが保存されていません。再生成してください。")
     }
 
-    // ファイル名: テンプレート名_会社名_YYYYMMDD.pdf
+    // ファイル名: YYYYMMDD_会社名_テンプレート名.pdf
     const d = history.createdAt
     const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`
     const templateName = history.template.name
-    const fileName = `${templateName}_${history.companyName}_${dateStr}.pdf`
+    const fileName = `${dateStr}_${history.companyName}_${templateName}.pdf`
     const pdfBytes = new Uint8Array(history.pdfData)
 
     return new NextResponse(pdfBytes, {

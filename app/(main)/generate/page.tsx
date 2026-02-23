@@ -181,7 +181,7 @@ export default function GeneratePage() {
   const handleDownloadOne = (pdf: GeneratedPdf) => {
     const now = new Date()
     const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`
-    const fileName = `${pdf.templateName}_${pdf.companyName}_${dateStr}.pdf`
+    const fileName = `${dateStr}_${pdf.companyName}_${pdf.templateName}.pdf`
     if (pdf.blobUrl) {
       const link = document.createElement("a")
       link.href = pdf.blobUrl
