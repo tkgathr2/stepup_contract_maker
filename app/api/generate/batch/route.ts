@@ -17,10 +17,12 @@ interface CompanyData {
 interface GeneratedPDF {
   pdfUrl: string
   companyName: string
+  templateName: string
+  templateType: string
   historyId: string
 }
 
-// 一括PDF生成
+// 一括PDF生成（複数テンプレート対応）
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
 
@@ -34,15 +36,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { templateId, companies } = body as {
-      templateId: string
+    const { templateIds, companies } = body as {
+      templateIds: string[]
       companies: CompanyData[]
     }
 
     // バリデーション
-    if (!templateId || typeof templateId !== "string") {
+    if (!Array.isArray(templateIds) || templateIds.length === 0) {
       return sendError(400, ErrorCode.INVALID_PAYLOAD, "入力が不正です", {
-        field: "templateId",
+        field: "templateIds",
         reason: "required",
       })
     }
@@ -92,80 +94,88 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // テンプレートを取得
-    const template = await db.template.findUnique({
-      where: { id: templateId },
+    // 全テンプレートを取得
+    const templates = await db.template.findMany({
+      where: { id: { in: templateIds } },
     })
 
-    if (!template) {
+    if (templates.length === 0) {
       return sendError(404, ErrorCode.NOT_FOUND, "テンプレートが見つかりません")
     }
 
+    const totalCount = companies.length * templates.length
     logAction(
       userId,
       email,
       name,
       "一括PDF生成",
-      `開始 - ${companies.length}件`
+      `開始 - ${companies.length}社 × ${templates.length}テンプレート = ${totalCount}件`
     )
 
-    // 各会社に対してPDFを生成（直列処理：Chromiumリソース節約）
-    const results: { success: boolean; pdfUrl?: string; companyName: string; historyId?: string; error?: string }[] = []
+    // 各会社×各テンプレートに対してPDFを生成（直列処理）
+    const results: { success: boolean; pdfUrl?: string; companyName: string; templateName?: string; templateType?: string; historyId?: string; error?: string }[] = []
 
-    for (let index = 0; index < companies.length; index++) {
-      const company = companies[index]
-      try {
-        // テンプレートにデータを埋め込む
-        const docxBuffer = await processTemplate(template, {
-          companyName: company.companyName,
-          postalCode: company.postalCode,
-          address: company.address,
-          representativeName: company.representativeName,
-        })
-
-        // PDFを生成（バッファとしてDBに保存）
-        const pdfBuffer = await generatePDFBuffer(docxBuffer)
-
-        // 履歴を保存（PDF実体をDBに格納）
-        const history = await db.generationHistory.create({
-          data: {
-            userId,
-            templateId,
+    for (let ci = 0; ci < companies.length; ci++) {
+      const company = companies[ci]
+      for (let ti = 0; ti < templates.length; ti++) {
+        const template = templates[ti]
+        try {
+          // テンプレートにデータを埋め込む
+          const docxBuffer = await processTemplate(template, {
             companyName: company.companyName,
+            postalCode: company.postalCode,
             address: company.address,
             representativeName: company.representativeName,
-            pdfPath: `/api/pdf/PLACEHOLDER`,
-            pdfData: pdfBuffer,
-          },
-        })
+          })
 
-        await db.generationHistory.update({
-          where: { id: history.id },
-          data: { pdfPath: `/api/pdf/${history.id}` },
-        })
+          // PDFを生成（バッファとしてDBに保存）
+          const pdfBuffer = await generatePDFBuffer(docxBuffer)
 
-        logAction(
-          userId,
-          email,
-          name,
-          "一括PDF生成",
-          `成功 (${index + 1}/${companies.length}) - 会社名: ${company.companyName}`
-        )
+          // 履歴を保存（PDF実体をDBに格納）
+          const history = await db.generationHistory.create({
+            data: {
+              userId,
+              templateId: template.id,
+              companyName: company.companyName,
+              address: company.address,
+              representativeName: company.representativeName,
+              pdfPath: `/api/pdf/PLACEHOLDER`,
+              pdfData: pdfBuffer,
+            },
+          })
 
-        results.push({
-          success: true,
-          pdfUrl: `/api/pdf/${history.id}`,
-          companyName: company.companyName,
-          historyId: history.id,
-        })
-      } catch (error) {
-        logError(userId, email, name, error as Error)
-        captureInternalError(error, "generate/batch:item")
-        results.push({
-          success: false,
-          companyName: company.companyName,
-          error: (error as Error).message,
-        })
+          await db.generationHistory.update({
+            where: { id: history.id },
+            data: { pdfPath: `/api/pdf/${history.id}` },
+          })
+
+          logAction(
+            userId,
+            email,
+            name,
+            "一括PDF生成",
+            `成功 (${ci * templates.length + ti + 1}/${totalCount}) - ${company.companyName} × ${template.name}`
+          )
+
+          results.push({
+            success: true,
+            pdfUrl: `/api/pdf/${history.id}`,
+            companyName: company.companyName,
+            templateName: template.name,
+            templateType: template.type,
+            historyId: history.id,
+          })
+        } catch (error) {
+          logError(userId, email, name, error as Error)
+          captureInternalError(error, "generate/batch:item")
+          results.push({
+            success: false,
+            companyName: company.companyName,
+            templateName: template.name,
+            templateType: template.type,
+            error: (error as Error).message,
+          })
+        }
       }
     }
 
@@ -175,6 +185,8 @@ export async function POST(request: NextRequest) {
       .map((r) => ({
         pdfUrl: r.pdfUrl!,
         companyName: r.companyName,
+        templateName: r.templateName!,
+        templateType: r.templateType!,
         historyId: r.historyId!,
       }))
 

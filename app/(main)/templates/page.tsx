@@ -338,43 +338,45 @@ export default function TemplatesPage() {
                     <TableCell className="font-medium">{template.name}</TableCell>
                     <TableCell>{getTypeLabel(template.type)}</TableCell>
                     <TableCell>{formatDate(template.updatedAt)}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={`/api/templates/${template.id}/download`} target="_blank" rel="noopener noreferrer">
-                          DL
-                        </a>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTemplate(template)
-                          setReplaceDialogOpen(true)
-                        }}
-                      >
-                        差替え
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTemplate(template)
-                          fetchVersions(template.id)
-                          setHistoryDialogOpen(true)
-                        }}
-                      >
-                        履歴
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTemplate(template)
-                          setDeleteDialogOpen(true)
-                        }}
-                      >
-                        削除
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={`/api/templates/${template.id}/download`} target="_blank" rel="noopener noreferrer">
+                            DL
+                          </a>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTemplate(template)
+                            setReplaceDialogOpen(true)
+                          }}
+                        >
+                          差替え
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTemplate(template)
+                            fetchVersions(template.id)
+                            setHistoryDialogOpen(true)
+                          }}
+                        >
+                          履歴
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTemplate(template)
+                            setDeleteDialogOpen(true)
+                          }}
+                        >
+                          削除
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
