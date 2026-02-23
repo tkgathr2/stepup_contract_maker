@@ -229,10 +229,21 @@ function stripNumberingProperties(zip: PizZip): void {
     const file = zip.file(target)
     if (!file) continue
     let xml = file.asText()
-    // <w:numPr>...</w:numPr> を除去（ネストなし、最短一致）
-    xml = xml.replace(/<w:numPr>[\s\S]*?<\/w:numPr>/g, "")
-    // 自己終了タグ形式も除去
-    xml = xml.replace(/<w:numPr\/>/g, "")
+
+    // numPr を含む pPr から numPr と ind（hanging indent）を両方除去する
+    // numPr 除去後に ind だけ残るとテキストが右にずれる問題を防止
+    xml = xml.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/g, (_match, inner: string) => {
+      if (!inner.includes("<w:numPr>") && !inner.includes("<w:numPr/>")) {
+        return _match // numPr がない pPr はそのまま
+      }
+      // numPr を除去
+      let cleaned = inner.replace(/<w:numPr>[\s\S]*?<\/w:numPr>/g, "")
+      cleaned = cleaned.replace(/<w:numPr\/>/g, "")
+      // hanging indent を除去（番号リスト用のインデント）
+      cleaned = cleaned.replace(/<w:ind[^>]*w:hanging="[^"]*"[^/]*\/>/g, "")
+      return `<w:pPr>${cleaned}</w:pPr>`
+    })
+
     zip.file(target, xml)
   }
 
