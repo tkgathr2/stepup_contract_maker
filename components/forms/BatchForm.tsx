@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export interface CompanyData {
   companyName: string
+  postalCode: string
   address: string
   representativeName: string
 }
@@ -24,13 +25,13 @@ interface CompanyEntry extends CompanyData {
 
 export default function BatchForm({ onSubmit, isLoading = false }: BatchFormProps) {
   const [companies, setCompanies] = useState<CompanyEntry[]>([
-    { id: crypto.randomUUID(), companyName: "", address: "", representativeName: "", errors: {} },
+    { id: crypto.randomUUID(), companyName: "", postalCode: "", address: "", representativeName: "", errors: {} },
   ])
 
   const addCompany = () => {
     setCompanies([
       ...companies,
-      { id: crypto.randomUUID(), companyName: "", address: "", representativeName: "", errors: {} },
+      { id: crypto.randomUUID(), companyName: "", postalCode: "", address: "", representativeName: "", errors: {} },
     ])
   }
 
@@ -57,6 +58,12 @@ export default function BatchForm({ onSubmit, isLoading = false }: BatchFormProp
       errors.companyName = "会社名は100文字以内"
     }
 
+    if (!company.postalCode.trim()) {
+      errors.postalCode = "郵便番号は必須です"
+    } else if (!/^\d{3}-?\d{4}$/.test(company.postalCode.trim())) {
+      errors.postalCode = "郵便番号の形式が不正です"
+    }
+
     if (!company.address.trim()) {
       errors.address = "住所は必須です"
     } else if (company.address.length > 500) {
@@ -64,9 +71,9 @@ export default function BatchForm({ onSubmit, isLoading = false }: BatchFormProp
     }
 
     if (!company.representativeName.trim()) {
-      errors.representativeName = "代表者名は必須です"
+      errors.representativeName = "氏名は必須です"
     } else if (company.representativeName.length > 100) {
-      errors.representativeName = "代表者名は100文字以内"
+      errors.representativeName = "氏名は100文字以内"
     }
 
     return errors
@@ -95,6 +102,7 @@ export default function BatchForm({ onSubmit, isLoading = false }: BatchFormProp
     onSubmit(
       companies.map((c) => ({
         companyName: c.companyName.trim(),
+        postalCode: c.postalCode.trim(),
         address: c.address.trim(),
         representativeName: c.representativeName.trim(),
       }))
@@ -133,7 +141,7 @@ export default function BatchForm({ onSubmit, isLoading = false }: BatchFormProp
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor={`companyName-${company.id}`}>
                     会社名 <span className="text-red-500">*</span>
@@ -150,6 +158,25 @@ export default function BatchForm({ onSubmit, isLoading = false }: BatchFormProp
                   />
                   {company.errors.companyName && (
                     <p className="text-xs text-red-500">{company.errors.companyName}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor={`postalCode-${company.id}`}>
+                    郵便番号 <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id={`postalCode-${company.id}`}
+                    value={company.postalCode}
+                    onChange={(e) =>
+                      updateCompany(company.id, "postalCode", e.target.value)
+                    }
+                    placeholder="540-0031"
+                    maxLength={8}
+                    disabled={isLoading}
+                  />
+                  {company.errors.postalCode && (
+                    <p className="text-xs text-red-500">{company.errors.postalCode}</p>
                   )}
                 </div>
 
@@ -174,7 +201,7 @@ export default function BatchForm({ onSubmit, isLoading = false }: BatchFormProp
 
                 <div className="space-y-1">
                   <Label htmlFor={`representativeName-${company.id}`}>
-                    代表者名 <span className="text-red-500">*</span>
+                    氏名 <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id={`representativeName-${company.id}`}

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export interface CompanyData {
   companyName: string
+  postalCode: string
   address: string
   representativeName: string
 }
@@ -28,6 +29,7 @@ export default function CompanyForm({
   submitLabel = "PDF生成",
 }: CompanyFormProps) {
   const [companyName, setCompanyName] = useState("")
+  const [postalCode, setPostalCode] = useState("")
   const [address, setAddress] = useState("")
   const [representativeName, setRepresentativeName] = useState("")
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
@@ -41,6 +43,12 @@ export default function CompanyForm({
       newErrors.companyName = "会社名は100文字以内で入力してください"
     }
 
+    if (!postalCode.trim()) {
+      newErrors.postalCode = "郵便番号は必須です"
+    } else if (!/^\d{3}-?\d{4}$/.test(postalCode.trim())) {
+      newErrors.postalCode = "郵便番号の形式が正しくありません（例: 540-0031）"
+    }
+
     if (!address.trim()) {
       newErrors.address = "住所は必須です"
     } else if (address.length > 500) {
@@ -48,9 +56,9 @@ export default function CompanyForm({
     }
 
     if (!representativeName.trim()) {
-      newErrors.representativeName = "代表者名は必須です"
+      newErrors.representativeName = "氏名は必須です"
     } else if (representativeName.length > 100) {
-      newErrors.representativeName = "代表者名は100文字以内で入力してください"
+      newErrors.representativeName = "氏名は100文字以内で入力してください"
     }
 
     setErrors(newErrors)
@@ -62,6 +70,7 @@ export default function CompanyForm({
     if (validate()) {
       onSubmit({
         companyName: companyName.trim(),
+        postalCode: postalCode.trim(),
         address: address.trim(),
         representativeName: representativeName.trim(),
       })
@@ -72,6 +81,7 @@ export default function CompanyForm({
     if (validate() && onPreview) {
       onPreview({
         companyName: companyName.trim(),
+        postalCode: postalCode.trim(),
         address: address.trim(),
         representativeName: representativeName.trim(),
       })
@@ -107,6 +117,23 @@ export default function CompanyForm({
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="postalCode">
+              郵便番号 <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="postalCode"
+              value={postalCode}
+              onChange={(e) => setPostalCode(e.target.value)}
+              placeholder="例: 540-0031"
+              maxLength={8}
+              disabled={isLoading || isPreviewing}
+            />
+            {errors.postalCode && (
+              <p className="text-sm text-red-500">{errors.postalCode}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="address">
               住所 <span className="text-red-500">*</span>
             </Label>
@@ -126,7 +153,7 @@ export default function CompanyForm({
 
           <div className="space-y-2">
             <Label htmlFor="representativeName">
-              代表者名 <span className="text-red-500">*</span>
+              氏名 <span className="text-red-500">*</span>
             </Label>
             <Input
               id="representativeName"
