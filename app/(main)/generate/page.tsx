@@ -1,64 +1,136 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import CompanyForm, { CompanyData } from "@/components/forms/CompanyForm"
-import TemplateSelector from "@/components/templates/TemplateSelector"
 import { toast } from "sonner"
 
+interface Template {
+  id: string
+  name: string
+  type: string
+}
+
+interface GeneratedPdf {
+  templateName: string
+  templateType: string
+  pdfUrl: string
+  blobUrl: string | null
+  historyId: string
+}
+
 export default function GeneratePage() {
-  const [templateId, setTemplateId] = useState("")
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set())
+  const [loadingTemplates, setLoadingTemplates] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [isPreviewing, setIsPreviewing] = useState(false)
   const submittingRef = useRef(false)
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
-  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null)
+  const [generatedPdfs, setGeneratedPdfs] = useState<GeneratedPdf[]>([])
   const [previewPdf, setPreviewPdf] = useState<string | null>(null)
 
+  // テンプレート一覧を取得し、全てデフォルトでONにする
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const response = await fetch("/api/templates")
+        if (response.ok) {
+          const data = await response.json()
+          const tpls: Template[] = data.templates
+          setTemplates(tpls)
+          // デフォルトで全テンプレートを選択
+          setSelectedTemplateIds(new Set(tpls.map((t) => t.id)))
+        }
+      } catch (error) {
+        console.error("Failed to fetch templates:", error)
+      } finally {
+        setLoadingTemplates(false)
+      }
+    }
+    fetchTemplates()
+  }, [])
+
+  const getTypeLabel = (type: string) => {
+    return type === "contract" ? "契約書" : "送り状"
+  }
+
+  const toggleTemplate = (templateId: string) => {
+    setSelectedTemplateIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(templateId)) {
+        next.delete(templateId)
+      } else {
+        next.add(templateId)
+      }
+      return next
+    })
+  }
+
   const handleGenerate = async (data: CompanyData) => {
-    if (!templateId) {
-      toast.error("テンプレートを選択してください")
+    if (selectedTemplateIds.size === 0) {
+      toast.error("テンプレートを1つ以上選択してください")
       return
     }
     if (submittingRef.current) return
     submittingRef.current = true
 
     setIsLoading(true)
-    setPdfUrl(null)
-    if (pdfBlobUrl) {
-      URL.revokeObjectURL(pdfBlobUrl)
-      setPdfBlobUrl(null)
+    // 古いblob URLを解放
+    for (const pdf of generatedPdfs) {
+      if (pdf.blobUrl) URL.revokeObjectURL(pdf.blobUrl)
     }
+    setGeneratedPdfs([])
+    setPreviewPdf(null)
+
+    const results: GeneratedPdf[] = []
 
     try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...data,
-          templateId,
-        }),
-      })
+      for (const templateId of selectedTemplateIds) {
+        const template = templates.find((t) => t.id === templateId)
+        if (!template) continue
 
-      const result = await response.json()
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...data, templateId }),
+        })
 
-      if (!response.ok) {
-        throw new Error(result.message || "PDF生成に失敗しました")
+        const result = await response.json()
+
+        if (!response.ok) {
+          toast.error(`${template.name}の生成に失敗: ${result.message || "エラー"}`)
+          continue
+        }
+
+        // PDFをfetchしてBlob URLを作成（認証cookie付き）
+        let blobUrl: string | null = null
+        try {
+          const pdfRes = await fetch(result.pdfUrl, { credentials: "include" })
+          if (pdfRes.ok) {
+            const blob = await pdfRes.blob()
+            blobUrl = URL.createObjectURL(blob)
+          }
+        } catch {
+          // blob作成失敗は無視（ダウンロード時にフォールバック）
+        }
+
+        results.push({
+          templateName: template.name,
+          templateType: template.type,
+          pdfUrl: result.pdfUrl,
+          blobUrl,
+          historyId: result.historyId,
+        })
       }
 
-      setPdfUrl(result.pdfUrl)
+      setGeneratedPdfs(results)
 
-      // PDFをfetchしてBlob URLを作成（認証cookie付き）
-      const pdfRes = await fetch(result.pdfUrl, { credentials: "include" })
-      if (pdfRes.ok) {
-        const blob = await pdfRes.blob()
-        setPdfBlobUrl(URL.createObjectURL(blob))
+      if (results.length > 0) {
+        toast.success(`${results.length}件のPDFを生成しました`)
       }
-
-      toast.success("PDFを生成しました")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "エラーが発生しました")
     } finally {
@@ -68,8 +140,10 @@ export default function GeneratePage() {
   }
 
   const handlePreview = async (data: CompanyData) => {
-    if (!templateId) {
-      toast.error("テンプレートを選択してください")
+    // プレビューは最初に選択されたテンプレートで1つだけ生成
+    const firstId = Array.from(selectedTemplateIds)[0]
+    if (!firstId) {
+      toast.error("テンプレートを1つ以上選択してください")
       return
     }
 
@@ -82,14 +156,8 @@ export default function GeneratePage() {
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...data,
-          templateId,
-          preview: true,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, templateId: firstId, preview: true }),
       })
 
       const result = await response.json()
@@ -108,28 +176,34 @@ export default function GeneratePage() {
     }
   }
 
-  const handleDownload = () => {
-    if (pdfBlobUrl) {
+  const handleDownloadOne = (pdf: GeneratedPdf) => {
+    const fileName = `${pdf.templateName}.pdf`
+    if (pdf.blobUrl) {
       const link = document.createElement("a")
-      link.href = pdfBlobUrl
-      link.download = "generated.pdf"
+      link.href = pdf.blobUrl
+      link.download = fileName
       link.click()
-    } else if (pdfUrl) {
-      // フォールバック: blob URLがない場合はfetchで取得
-      fetch(pdfUrl, { credentials: "include" })
-        .then(res => {
+    } else {
+      fetch(pdf.pdfUrl, { credentials: "include" })
+        .then((res) => {
           if (!res.ok) throw new Error("ダウンロードに失敗しました")
           return res.blob()
         })
-        .then(blob => {
+        .then((blob) => {
           const blobUrl = URL.createObjectURL(blob)
           const link = document.createElement("a")
           link.href = blobUrl
-          link.download = "generated.pdf"
+          link.download = fileName
           link.click()
           URL.revokeObjectURL(blobUrl)
         })
         .catch(() => toast.error("PDFのダウンロードに失敗しました"))
+    }
+  }
+
+  const handleDownloadAll = () => {
+    for (const pdf of generatedPdfs) {
+      handleDownloadOne(pdf)
     }
   }
 
@@ -148,15 +222,36 @@ export default function GeneratePage() {
             <CardHeader>
               <CardTitle>テンプレート選択</CardTitle>
               <CardDescription>
-                使用するテンプレートを選択してください
+                生成するテンプレートを選択してください（複数選択可）
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <TemplateSelector
-                value={templateId}
-                onChange={setTemplateId}
-                disabled={isLoading || isPreviewing}
-              />
+              {loadingTemplates ? (
+                <p className="text-sm text-muted-foreground">読み込み中...</p>
+              ) : templates.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  テンプレートがありません。テンプレート管理ページからアップロードしてください。
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {templates.map((template) => (
+                    <div key={template.id} className="flex items-center space-x-3">
+                      <Checkbox
+                        id={`template-${template.id}`}
+                        checked={selectedTemplateIds.has(template.id)}
+                        onCheckedChange={() => toggleTemplate(template.id)}
+                        disabled={isLoading || isPreviewing}
+                      />
+                      <Label
+                        htmlFor={`template-${template.id}`}
+                        className="text-sm font-medium leading-none cursor-pointer"
+                      >
+                        {template.name}（{getTypeLabel(template.type)}）
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -169,32 +264,50 @@ export default function GeneratePage() {
         </div>
 
         <div className="space-y-6">
-          {pdfUrl && (
+          {generatedPdfs.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>生成完了</CardTitle>
                 <CardDescription>
-                  PDFが正常に生成されました
+                  {generatedPdfs.length}件のPDFが正常に生成されました
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button onClick={handleDownload} className="w-full">
-                  PDFをダウンロード
-                </Button>
-                {pdfBlobUrl && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <iframe
-                      src={pdfBlobUrl}
-                      className="w-full h-[600px]"
-                      title="Generated PDF"
-                    />
-                  </div>
+                {generatedPdfs.length > 1 && (
+                  <Button onClick={handleDownloadAll} className="w-full">
+                    すべてダウンロード（{generatedPdfs.length}件）
+                  </Button>
                 )}
+                {generatedPdfs.map((pdf, index) => (
+                  <div key={pdf.historyId} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {pdf.templateName}（{getTypeLabel(pdf.templateType)}）
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadOne(pdf)}
+                      >
+                        ダウンロード
+                      </Button>
+                    </div>
+                    {pdf.blobUrl && (
+                      <div className="border rounded-lg overflow-hidden">
+                        <iframe
+                          src={pdf.blobUrl}
+                          className="w-full h-[400px]"
+                          title={`Generated PDF ${index + 1}`}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
 
-          {previewPdf && !pdfUrl && (
+          {previewPdf && generatedPdfs.length === 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>プレビュー</CardTitle>
@@ -214,7 +327,7 @@ export default function GeneratePage() {
             </Card>
           )}
 
-          {!pdfUrl && !previewPdf && (
+          {generatedPdfs.length === 0 && !previewPdf && (
             <Card>
               <CardHeader>
                 <CardTitle>プレビュー・生成結果</CardTitle>
