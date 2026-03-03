@@ -207,7 +207,7 @@ export default function LabelPrintPage() {
             text = historyData.companyName
             break
           case "representativeName":
-            text = historyData.representativeName ? `${historyData.representativeName} 様` : ""
+            text = historyData.representativeName ? `${historyData.representativeName} 御中` : ""
             break
         }
         const fittedSize = fitFontSize(block, text, LABEL.width)
