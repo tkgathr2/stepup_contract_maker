@@ -82,6 +82,9 @@ export default function LabelPrintPage() {
   // ④ 印刷セッション状態（印刷位置の複数選択）
   const [selectedPositions, setSelectedPositions] = useState<number[]>([1])
 
+  // ⑤ プレビュー拡大率（px換算の倍率）
+  const [previewScale, setPreviewScale] = useState(2)
+
   // 印刷前チェック
   const [showPrintCheck, setShowPrintCheck] = useState(false)
   const [printCheck, setPrintCheck] = useState<PrintCheckState>({
@@ -395,20 +398,48 @@ export default function LabelPrintPage() {
         {/* プレビュー */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">プレビュー</CardTitle>
-            <CardDescription>実際の印刷イメージ（縮小表示）</CardDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base">プレビュー</CardTitle>
+                <CardDescription>印刷イメージ（拡大/縮小可）</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewScale((s) => Math.max(1, Math.round((s - 0.5) * 2) / 2))}
+                  disabled={previewScale <= 1}
+                >
+                  −
+                </Button>
+                <span className="text-sm text-muted-foreground w-14 text-center">
+                  {Math.round(previewScale * 100)}%
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewScale((s) => Math.min(4, Math.round((s + 0.5) * 2) / 2))}
+                  disabled={previewScale >= 4}
+                >
+                  ＋
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex justify-center">
-              <div
-                className="border border-border shadow-sm bg-white"
-                style={{
-                  width: `${SHEET.width * 2}px`,
-                  height: `${SHEET.height * 2}px`,
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
+              <div className="overflow-auto max-w-full">
+                <div
+                  className="border border-border shadow-sm bg-white"
+                  style={{
+                    width: `${SHEET.width * previewScale}px`,
+                    height: `${SHEET.height * previewScale}px`,
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
                 {labels.map((label, i) => {
                   const pos = getLabelPosition(i, adjustment)
                   const isEmpty = label === null
@@ -418,22 +449,22 @@ export default function LabelPrintPage() {
                       key={i}
                       style={{
                         position: "absolute",
-                        top: `${pos.top * 2}px`,
-                        left: `${pos.left * 2}px`,
-                        width: `${LABEL.width * 2}px`,
-                        height: `${LABEL.height * 2}px`,
+                        top: `${pos.top * previewScale}px`,
+                        left: `${pos.left * previewScale}px`,
+                        width: `${LABEL.width * previewScale}px`,
+                        height: `${LABEL.height * previewScale}px`,
                         border: hasOverflow ? "2px solid #ef4444" : "1px dashed #d1d5db",
                         borderRadius: "4px",
                         backgroundColor: isEmpty ? "#f9fafb" : "#ffffff",
                         display: "flex",
                         flexDirection: "column",
                         justifyContent: "center",
-                        padding: "4px 6px",
+                        padding: `${2 * previewScale}px ${3 * previewScale}px`,
                         overflow: "hidden",
                       }}
                     >
                       {isEmpty ? (
-                        <span style={{ color: "#d1d5db", fontSize: "16px", textAlign: "center" }}>
+                        <span style={{ color: "#d1d5db", fontSize: `${8 * previewScale}px`, textAlign: "center" }}>
                           {i + 1}
                         </span>
                       ) : (
@@ -442,7 +473,7 @@ export default function LabelPrintPage() {
                             <div
                               key={bi}
                               style={{
-                                fontSize: `${block.fontSize * 2}px`,
+                                fontSize: `${block.fontSize * previewScale}px`,
                                 fontWeight: block.bold ? "bold" : "normal",
                                 textAlign: block.align as "left" | "center" | "right",
                                 lineHeight: 1.3,
@@ -458,6 +489,7 @@ export default function LabelPrintPage() {
                     </div>
                   )
                 })}
+                </div>
               </div>
             </div>
           </CardContent>

@@ -26,7 +26,7 @@ export default function CompanyForm({
   onPreview,
   isLoading = false,
   isPreviewing = false,
-  submitLabel = "PDF生成",
+  submitLabel = "生成",
 }: CompanyFormProps) {
   const [companyName, setCompanyName] = useState("")
   const [postalCode, setPostalCode] = useState("")
