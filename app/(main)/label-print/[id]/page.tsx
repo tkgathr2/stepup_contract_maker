@@ -36,13 +36,6 @@ interface HistoryData {
   createdAt: string
 }
 
-interface PrintCheckState {
-  paperA4: boolean
-  scale100: boolean
-  marginNone: boolean
-  headerFooterOff: boolean
-}
-
 // ─── テキストはみ出し縮小（forループ、while禁止） ───
 
 function fitFontSize(block: LabelBlock, text: string, labelWidthMm: number): number {
@@ -85,14 +78,6 @@ export default function LabelPrintPage() {
   // ⑤ プレビュー拡大率（px換算の倍率）
   const [previewScale, setPreviewScale] = useState(2)
 
-  // 印刷前チェック
-  const [showPrintCheck, setShowPrintCheck] = useState(false)
-  const [printCheck, setPrintCheck] = useState<PrintCheckState>({
-    paperA4: false,
-    scale100: false,
-    marginNone: false,
-    headerFooterOff: false,
-  })
 
   // レイアウト検証
   const [layoutErrors, setLayoutErrors] = useState<string[]>([])
@@ -167,8 +152,6 @@ export default function LabelPrintPage() {
 
   // ─── 印刷実行 ───
 
-  const allChecked = printCheck.paperA4 && printCheck.scale100 && printCheck.marginNone && printCheck.headerFooterOff
-
   const handlePrint = () => {
     // コンソールログ（V1: console、将来DB保存可）
     console.log(JSON.stringify({
@@ -179,8 +162,6 @@ export default function LabelPrintPage() {
       timestamp: new Date().toISOString(),
     }))
     window.print()
-    setShowPrintCheck(false)
-    setPrintCheck({ paperA4: false, scale100: false, marginNone: false, headerFooterOff: false })
   }
 
   // ─── ラベルデータ生成 ───
@@ -499,7 +480,7 @@ export default function LabelPrintPage() {
         <div className="flex justify-center gap-4 pb-8">
           <Button
             size="lg"
-            onClick={() => setShowPrintCheck(true)}
+            onClick={handlePrint}
             disabled={layoutErrors.length > 0}
             className="px-8"
           >
@@ -508,75 +489,6 @@ export default function LabelPrintPage() {
           </Button>
         </div>
 
-        {/* 印刷前チェックダイアログ */}
-        {showPrintCheck && (
-          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <Card className="w-full max-w-md">
-              <CardHeader>
-                <CardTitle>印刷前チェック</CardTitle>
-                <CardDescription>すべて確認してから印刷してください</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={printCheck.paperA4}
-                    onChange={(e) => setPrintCheck({ ...printCheck, paperA4: e.target.checked })}
-                    className="w-5 h-5 rounded border-2"
-                  />
-                  <span className="text-sm">用紙サイズ: <strong>A4</strong></span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={printCheck.scale100}
-                    onChange={(e) => setPrintCheck({ ...printCheck, scale100: e.target.checked })}
-                    className="w-5 h-5 rounded border-2"
-                  />
-                  <span className="text-sm">倍率: <strong>100%</strong>（実際のサイズ）</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={printCheck.marginNone}
-                    onChange={(e) => setPrintCheck({ ...printCheck, marginNone: e.target.checked })}
-                    className="w-5 h-5 rounded border-2"
-                  />
-                  <span className="text-sm">余白: <strong>なし</strong></span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={printCheck.headerFooterOff}
-                    onChange={(e) => setPrintCheck({ ...printCheck, headerFooterOff: e.target.checked })}
-                    className="w-5 h-5 rounded border-2"
-                  />
-                  <span className="text-sm">ヘッダー/フッター: <strong>OFF</strong></span>
-                </label>
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowPrintCheck(false)
-                      setPrintCheck({ paperA4: false, scale100: false, marginNone: false, headerFooterOff: false })
-                    }}
-                    className="flex-1"
-                  >
-                    キャンセル
-                  </Button>
-                  <Button
-                    onClick={handlePrint}
-                    disabled={!allChecked}
-                    className="flex-1"
-                  >
-                    <Printer className="w-4 h-4 mr-1" />
-                    印刷実行
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
 
       {/* ── 印刷専用DOM（画面では非表示、印刷時のみ表示） ── */}
