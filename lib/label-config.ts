@@ -29,7 +29,8 @@ export interface SheetAdjustment {
 }
 
 export interface PrintSession {
-  startIndex: number   // 1〜12
+  startIndex: number   // 1〜12 (legacy)
+  selectedPositions: number[]  // 1〜12 の選択された位置
 }
 
 // ─── A-one 31275 用紙定数 ───
@@ -172,6 +173,7 @@ export function validateLayout(adjustment: SheetAdjustment): {
 
 export const STORAGE_KEYS = {
   startIndex: "label_startIndex",
+  selectedPositions: "label_selectedPositions",
   adjustment: "label_adjustment",
   defaults: "label_defaults",
   contractOverride: (contractId: string) => `label_override_${contractId}`,
@@ -218,4 +220,25 @@ export function loadStartIndex(): number {
 export function saveStartIndex(index: number): void {
   if (typeof window === "undefined") return
   localStorage.setItem(STORAGE_KEYS.startIndex, String(index))
+}
+
+// ─── 選択位置（複数） localStorage 操作 ───
+
+export function loadSelectedPositions(): number[] {
+  if (typeof window === "undefined") return [1]
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.selectedPositions)
+    if (!raw) return [1]
+    const parsed = JSON.parse(raw) as number[]
+    if (!Array.isArray(parsed) || parsed.length === 0) return [1]
+    const valid = parsed.filter((n) => typeof n === "number" && n >= 1 && n <= LABEL.total)
+    return valid.length > 0 ? valid : [1]
+  } catch {
+    return [1]
+  }
+}
+
+export function saveSelectedPositions(positions: number[]): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem(STORAGE_KEYS.selectedPositions, JSON.stringify(positions))
 }
