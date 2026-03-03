@@ -127,6 +127,7 @@ export async function POST(request: NextRequest) {
         userId,
         templateId,
         companyName,
+        postalCode: postalCode || null,
         address,
         representativeName,
         pdfPath: `/api/pdf/PLACEHOLDER`,

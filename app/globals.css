@@ -123,3 +123,37 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── ラベル印刷専用CSS ── */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* UI要素を完全に非表示 */
+  body > *:not(#print-root-wrapper) {
+    display: none !important;
+  }
+
+  /* print-root のみ表示 */
+  #print-root {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  /* Next.js のレイアウトラッパーも非表示にしない */
+  #print-root-wrapper,
+  #print-root-wrapper * {
+    visibility: visible;
+  }
+}
