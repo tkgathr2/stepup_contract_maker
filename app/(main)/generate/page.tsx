@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import CompanyForm, { CompanyData } from "@/components/forms/CompanyForm"
 import { toast } from "sonner"
+import Link from "next/link"
 
 interface Template {
   id: string
@@ -316,6 +317,12 @@ export default function GeneratePage() {
                     </Button>
                   </div>
                 )}
+                {/* ラベル印刷ボタン（生成完了後に表示） */}
+                <Link href={`/label-print/${generatedPdfs[0]?.historyId}`}>
+                  <Button variant="outline" className="w-full">
+                    ラベル印刷（宛名ラベル）
+                  </Button>
+                </Link>
                 {generatedPdfs.map((pdf, index) => (
                   <div key={pdf.historyId} className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -337,6 +344,11 @@ export default function GeneratePage() {
                         >
                           Word
                         </Button>
+                        <Link href={`/label-print/${pdf.historyId}`}>
+                          <Button variant="outline" size="sm">
+                            ラベル
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                     {pdf.blobUrl && (
