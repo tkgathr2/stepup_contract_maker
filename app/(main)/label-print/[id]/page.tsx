@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { ArrowLeft, Printer, RotateCcw, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Printer, RotateCcw, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import {
   LABEL,
@@ -71,6 +71,7 @@ export default function LabelPrintPage() {
 
   // ③ シート補正値（mm単位）
   const [adjustment, setAdjustment] = useState<SheetAdjustment>(DEFAULT_ADJUSTMENT)
+  const [showAdjustment, setShowAdjustment] = useState(false)
 
   // ④ 印刷セッション状態（印刷位置の複数選択）
   const [selectedPositions, setSelectedPositions] = useState<number[]>([1])
@@ -296,11 +297,16 @@ export default function LabelPrintPage() {
 
         {/* シート補正値 */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">シート補正値（mm）</CardTitle>
-            <CardDescription>プリンターの個体差を補正。±10mm以内。</CardDescription>
+          <CardHeader className="cursor-pointer" onClick={() => setShowAdjustment((v) => !v)}>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">シート補正値（mm）</CardTitle>
+                <CardDescription>プリンターの個体差を補正。±10mm以内。</CardDescription>
+              </div>
+              {showAdjustment ? <ChevronDown className="w-5 h-5 text-muted-foreground" /> : <ChevronRight className="w-5 h-5 text-muted-foreground" />}
+            </div>
           </CardHeader>
-          <CardContent>
+          {showAdjustment && <CardContent>
             <div className="grid grid-cols-2 gap-4 max-w-md">
               <div className="space-y-1">
                 <Label className="text-xs">上方向オフセット</Label>
@@ -355,7 +361,7 @@ export default function LabelPrintPage() {
               <RotateCcw className="w-3 h-3 mr-1" />
               リセット
             </Button>
-          </CardContent>
+          </CardContent>}
         </Card>
 
         {/* レイアウト警告 */}
