@@ -18,8 +18,8 @@ export const metadata: Metadata = {
   title: "ラクラク契約くん",
   description: "契約書・送付状自動生成システム",
   icons: {
-    icon: "/favicon.ico?v=2",
-    apple: "/apple-touch-icon.png?v=2",
+    icon: "/favicon.ico?v=3",
+    apple: "/apple-touch-icon.png?v=3",
   },
   manifest: "/manifest.json",
 };
