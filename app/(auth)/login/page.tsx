@@ -15,7 +15,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
             <FileText className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-sky-400 bg-clip-text text-transparent">
             ラクラク契約くん
           </h1>
           <p className="text-muted-foreground mt-2">

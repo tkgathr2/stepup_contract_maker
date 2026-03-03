@@ -47,7 +47,7 @@ export default function MainLayout({
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <FileText className="w-4.5 h-4.5 text-primary" />
                 </div>
-                <span className="text-lg font-bold bg-gradient-to-r from-primary to-pink-400 bg-clip-text text-transparent">
+                <span className="text-lg font-bold bg-gradient-to-r from-primary to-sky-400 bg-clip-text text-transparent">
                   ラクラク契約くん
                 </span>
               </Link>
