@@ -6,9 +6,9 @@ import { ErrorCode, sendError, handleInternalError } from "@/lib/api-error"
 
 // 単一履歴取得
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+){
   try {
     const session = await getServerSession(authOptions)
 
