@@ -13,10 +13,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { toast } from "sonner"
+import Link from "next/link"
 
 interface History {
   id: string
   companyName: string
+  postalCode: string
   address: string
   representativeName: string
   templateName: string
@@ -215,14 +217,21 @@ export default function HistoryPage() {
                         </TableCell>
                         <TableCell>{formatDate(history.createdAt)}</TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              handleDownload(history)
-                            }
-                          >
-                            ダウンロード
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Link href={`/label-print/${history.id}`}>
+                              <Button size="sm" variant="outline">
+                                ラベル印刷
+                              </Button>
+                            </Link>
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                handleDownload(history)
+                              }
+                            >
+                              ダウンロード
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

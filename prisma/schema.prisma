@@ -54,6 +54,7 @@ model GenerationHistory {
   userId             String
   templateId         String
   companyName        String
+  postalCode         String?  // 郵便番号（V1.1で追加、既存レコードはnull）
   address            String
   representativeName String
   pdfPath            String

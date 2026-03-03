@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
     const formattedHistories = histories.map((history) => ({
       id: history.id,
       companyName: history.companyName,
+      postalCode: history.postalCode || "",
       address: history.address,
       representativeName: history.representativeName,
       templateName: history.template.name,
