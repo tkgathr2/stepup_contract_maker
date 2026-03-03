@@ -18,8 +18,8 @@ import {
   validateLayout,
   loadAdjustment,
   saveAdjustment,
-  loadStartIndex,
-  saveStartIndex,
+  loadSelectedPositions,
+  saveSelectedPositions,
   type SheetAdjustment,
   type LabelBlock,
 } from "@/lib/label-config"
@@ -79,8 +79,8 @@ export default function LabelPrintPage() {
   // ③ シート補正値（mm単位）
   const [adjustment, setAdjustment] = useState<SheetAdjustment>(DEFAULT_ADJUSTMENT)
 
-  // ④ 印刷セッション状態
-  const [startIndex, setStartIndex] = useState(1)
+  // ④ 印刷セッション状態（印刷位置の複数選択）
+  const [selectedPositions, setSelectedPositions] = useState<number[]>([1])
 
   // 印刷前チェック
   const [showPrintCheck, setShowPrintCheck] = useState(false)
@@ -113,7 +113,7 @@ export default function LabelPrintPage() {
   // localStorage復元
   useEffect(() => {
     setAdjustment(loadAdjustment())
-    setStartIndex(loadStartIndex())
+    setSelectedPositions(loadSelectedPositions())
   }, [])
 
   useEffect(() => {
@@ -140,9 +140,20 @@ export default function LabelPrintPage() {
     saveAdjustment(newAdj)
   }
 
-  const handleStartIndexChange = (idx: number) => {
-    setStartIndex(idx)
-    saveStartIndex(idx)
+  const handleTogglePosition = (idx: number) => {
+    setSelectedPositions((prev) => {
+      const isSelected = prev.includes(idx)
+      let next: number[]
+      if (isSelected) {
+        // 最低1つは選択必須
+        if (prev.length <= 1) return prev
+        next = prev.filter((p) => p !== idx)
+      } else {
+        next = [...prev, idx].sort((a, b) => a - b)
+      }
+      saveSelectedPositions(next)
+      return next
+    })
   }
 
   const resetAdjustment = () => {
@@ -159,7 +170,7 @@ export default function LabelPrintPage() {
     // コンソールログ（V1: console、将来DB保存可）
     console.log(JSON.stringify({
       contractId: historyId,
-      startIndex,
+      selectedPositions,
       layoutAdjusted: adjustment.topOffset !== 0 || adjustment.leftOffset !== 0 || adjustment.hGapOffset !== 0 || adjustment.vGapOffset !== 0,
       overflowOccurred: layoutErrors.length > 0,
       timestamp: new Date().toISOString(),
@@ -176,8 +187,9 @@ export default function LabelPrintPage() {
 
     const labels: (null | { blocks: { text: string; fontSize: number; bold: boolean; align: string; overflow: boolean }[] })[] = Array(LABEL.total).fill(null)
 
-    // startIndex（1-based）からラベル配置
-    for (let i = startIndex - 1; i < LABEL.total; i++) {
+    // 選択された位置のみラベル配置
+    for (let i = 0; i < LABEL.total; i++) {
+      if (!selectedPositions.includes(i + 1)) continue
       const template = DEFAULT_LABEL_TEMPLATE
       const blocks = template.blocks.map((block) => {
         let text = ""
@@ -262,37 +274,39 @@ export default function LabelPrintPage() {
           </CardContent>
         </Card>
 
-        {/* 開始位置選択 */}
+        {/* 印刷位置選択（トグル式） */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">印刷開始位置</CardTitle>
-            <CardDescription>使いかけのラベルシートの空き位置を選択</CardDescription>
+            <CardTitle className="text-base">印刷位置選択</CardTitle>
+            <CardDescription>ラベルを印刷する位置をクリックで選択（複数可）</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-2 max-w-xs">
-              {Array.from({ length: LABEL.total }, (_, i) => i + 1).map((idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleStartIndexChange(idx)}
-                  className={`
-                    relative h-12 rounded-lg border-2 text-sm font-bold transition-all
-                    ${startIndex === idx
-                      ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/30"
-                      : idx < startIndex
-                        ? "border-border/40 bg-muted/30 text-muted-foreground/50"
+              {Array.from({ length: LABEL.total }, (_, i) => i + 1).map((idx) => {
+                const isSelected = selectedPositions.includes(idx)
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleTogglePosition(idx)}
+                    className={`
+                      relative h-12 rounded-lg border-2 text-sm font-bold transition-all
+                      ${isSelected
+                        ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/30"
                         : "border-border bg-white text-foreground hover:border-primary/50"
-                    }
-                  `}
-                >
-                  <span className="text-lg">{idx}</span>
-                  {startIndex === idx && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center">
-                      &#10003;
-                    </span>
-                  )}
-                </button>
-              ))}
+                      }
+                    `}
+                  >
+                    <span className="text-lg">{idx}</span>
+                    {isSelected && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center">
+                        &#10003;
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
+            <p className="text-xs text-muted-foreground mt-2">選択中: {selectedPositions.length}枚</p>
           </CardContent>
         </Card>
 
