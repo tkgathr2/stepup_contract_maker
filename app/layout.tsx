@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -38,6 +39,8 @@ export default function RootLayout({
           {children}
           <Toaster />
         </AuthSessionProvider>
+        {/* カイゼンくん埋め込みウィジェット：右下のフクロウ博士。困りごと・改善要望をその場でチャット受付→Notion起票 */}
+        <Script src="https://kaizen.takagi.bz/widget.js" data-sys="rakuraku" strategy="lazyOnload" />
       </body>
     </html>
   );
