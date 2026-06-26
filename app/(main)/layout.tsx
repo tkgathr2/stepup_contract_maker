@@ -14,7 +14,7 @@ import {
   Menu,
   X,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 const navigation = [
   { name: "ダッシュボード", href: "/dashboard", icon: LayoutDashboard },
@@ -32,6 +32,19 @@ export default function MainLayout({
   const { data: session } = useSession()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // カイゼンくんウィジェット：セッション確認後のみ注入
+  useEffect(() => {
+    if (!session) return
+    if (document.querySelector('script[data-kaizen-contract]')) return
+    const s = document.createElement('script')
+    s.src = 'https://kaizen.takagi.bz/widget.js'
+    s.setAttribute('data-sys', 'rakuraku-contract')
+    s.setAttribute('data-kaizen-contract', '1')
+    s.defer = true
+    document.body.appendChild(s)
+  }, [session])
+
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/login" })
